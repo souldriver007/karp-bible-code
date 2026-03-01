@@ -29,7 +29,7 @@ const elsStats = require('./els_stats');
 // Configuration
 // ---------------------------------------------------------------------------
 
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 const SERVER_NAME = 'karp-bible-code';
 const DATA_PATH = path.join(require('os').homedir(), '.karp-bible-code');
 const BUNDLE_PATH = process.env.BUNDLE_PATH || path.join(__dirname, '..');
@@ -150,7 +150,7 @@ TIPS:
         inputSchema: {
             type: 'object',
             properties: {
-                term: { type: 'string', description: 'Term to search for (letters only, 2+ chars, 4+ recommended)' },
+                term: { type: 'string', description: 'Term to search for (letters only, 3+ chars required, 4+ recommended)' },
                 stream: { type: 'string', description: 'Letter stream scope: genesis, torah, full, ot, nt, or any book abbreviation (default: torah)', default: 'torah' },
                 skip_min: { type: 'integer', description: 'Minimum skip interval (default: 1)', default: 1 },
                 skip_max: { type: 'integer', description: 'Maximum skip interval (default: 3000)', default: 3000 },
@@ -639,14 +639,14 @@ async function handleToolCall(name, args) {
 
         case 'els_search': {
             const term = (args.term || '').toUpperCase().replace(/[^A-Z]/g, '');
-            if (!term || term.length < 2) {
-                return { error: 'Term must be at least 2 letters (A-Z only). 4+ letters recommended for meaningful results.' };
+            if (!term || term.length < 3) {
+                return { error: 'Term must be at least 3 letters (A-Z only). Short terms produce too many hits and can crash the server. 4+ letters recommended for meaningful results.' };
             }
 
             // Warn about short terms
             let warning = null;
-            if (term.length <= 3) {
-                warning = `⚠️ Short term "${term}" (${term.length} letters) may produce excessive hits. 4+ letters recommended for meaningful ELS research.`;
+            if (term.length === 3) {
+                warning = `⚠️ Short term "${term}" (3 letters) may produce many hits. 4+ letters recommended for meaningful ELS research.`;
             }
 
             const streamId = args.stream || 'torah';
@@ -682,6 +682,8 @@ async function handleToolCall(name, args) {
                 stream_name: result.stream_name,
                 total_letters: result.total_letters,
                 hit_count: result.hit_count,
+                hits_capped: result.hits_capped || false,
+                max_hits: result.max_hits,
                 elapsed_ms: result.elapsed_ms,
                 search_mode: result.search_mode,
                 skip_range: result.skip_range,
@@ -1470,7 +1472,7 @@ function startWebUI() {
     app.post('/api/els/searches', async (req, res) => {
         try {
             const { term, stream, skip_min, skip_max, direction, session_id } = req.body;
-            if (!term || term.length < 2) return res.status(400).json({ error: 'term must be 2+ letters' });
+            if (!term || term.length < 3) return res.status(400).json({ error: 'Term must be at least 3 letters. Short terms produce too many hits and can crash the server.' });
 
             const cleanTerm = term.toUpperCase().replace(/[^A-Z]/g, '');
             const streamId = stream || 'torah';
@@ -1496,6 +1498,8 @@ function startWebUI() {
                 term: result.term,
                 stream: result.stream_id,
                 hit_count: result.hit_count,
+                hits_capped: result.hits_capped || false,
+                max_hits: result.max_hits,
                 elapsed_ms: result.elapsed_ms,
                 hits: result.hits.map(h => ({
                     skip: h.skip,
@@ -1716,7 +1720,82 @@ async function handleMessage(message) {
 }
 
 // ---------------------------------------------------------------------------
-// Main — stdio loop
+// Crash Resilience — keep the server alive no matter what
+// ---------------------------------------------------------------------------
+
+const MAX_RESPONSE_BYTES = 10 * 1024 * 1024; // 10MB — if a response exceeds this, truncate it
+
+/**
+ * Safely serialize and write a response to stdout.
+ * Catches serialization errors and oversized responses that would crash stdio.
+ */
+function safeWrite(response) {
+    try {
+        const json = JSON.stringify(response);
+        if (json.length > MAX_RESPONSE_BYTES) {
+            log('WARN', `Response too large (${(json.length / 1024 / 1024).toFixed(1)}MB) — truncating to error response`);
+            // Replace with an error response preserving the jsonrpc id
+            const errorResponse = {
+                jsonrpc: '2.0',
+                id: response.id,
+                result: {
+                    content: [{ type: 'text', text: JSON.stringify({
+                        error: `Response too large (${(json.length / 1024 / 1024).toFixed(1)}MB). Try a longer search term or narrower skip range to reduce hits.`
+                    }) }],
+                    isError: true
+                }
+            };
+            process.stdout.write(JSON.stringify(errorResponse) + '\n');
+        } else {
+            process.stdout.write(json + '\n');
+        }
+    } catch (err) {
+        log('ERROR', `Failed to serialize/write response: ${err.message}`);
+        // Last resort — try to send a minimal error
+        try {
+            const fallback = JSON.stringify({
+                jsonrpc: '2.0',
+                id: response?.id || null,
+                result: {
+                    content: [{ type: 'text', text: JSON.stringify({ error: `Server error: ${err.message}` }) }],
+                    isError: true
+                }
+            });
+            process.stdout.write(fallback + '\n');
+        } catch (e) {
+            log('ERROR', `Critical: could not write any response: ${e.message}`);
+        }
+    }
+}
+
+// Global crash handlers — prevent process exit on uncaught errors
+process.on('uncaughtException', (err) => {
+    log('ERROR', `UNCAUGHT EXCEPTION (server survived): ${err.message}`);
+    log('ERROR', err.stack || 'no stack');
+    // Force garbage collection if available
+    if (global.gc) { try { global.gc(); } catch (e) {} }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    const msg = reason instanceof Error ? reason.message : String(reason);
+    log('ERROR', `UNHANDLED REJECTION (server survived): ${msg}`);
+});
+
+// Memory monitoring — warn if heap gets too large
+let lastMemWarn = 0;
+function checkMemory() {
+    const usage = process.memoryUsage();
+    const heapMB = usage.heapUsed / 1024 / 1024;
+    if (heapMB > 500 && Date.now() - lastMemWarn > 60000) {
+        log('WARN', `High memory usage: ${heapMB.toFixed(0)}MB heap`);
+        lastMemWarn = Date.now();
+        if (global.gc) { try { global.gc(); } catch (e) {} }
+    }
+}
+setInterval(checkMemory, 30000);
+
+// ---------------------------------------------------------------------------
+// Main — stdio loop (crash-resilient)
 // ---------------------------------------------------------------------------
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });
@@ -1725,14 +1804,38 @@ rl.on('line', async (line) => {
     const trimmed = line.trim();
     if (!trimmed) return;
 
+    let messageId = null;
     try {
         const message = JSON.parse(trimmed);
+        messageId = message.id || null;
         const response = await handleMessage(message);
-        if (response !== null) process.stdout.write(JSON.stringify(response) + '\n');
+        if (response !== null) safeWrite(response);
     } catch (err) {
-        log('ERROR', `Parse error: ${err.message}`);
+        log('ERROR', `Message handler error: ${err.message}`);
+        // Try to return an error response so Claude Desktop doesn't hang
+        if (messageId !== null) {
+            try {
+                safeWrite({
+                    jsonrpc: '2.0',
+                    id: messageId,
+                    result: {
+                        content: [{ type: 'text', text: JSON.stringify({ error: `Server error: ${err.message}` }) }],
+                        isError: true
+                    }
+                });
+            } catch (e) {
+                log('ERROR', `Could not send error response: ${e.message}`);
+            }
+        }
     }
+});
+
+// Handle readline close (Claude Desktop disconnected)
+rl.on('close', () => {
+    log('INFO', 'stdin closed — Claude Desktop disconnected. Server staying alive for web UI.');
+    // Don't exit — web UI server may still be useful
 });
 
 log('INFO', `${SERVER_NAME} v${VERSION} starting (stdio mode)`);
 log('INFO', `Data: ${DATA_PATH} | UI: http://localhost:${UI_PORT}`);
+log('INFO', 'Crash resilience: uncaughtException + unhandledRejection handlers active');

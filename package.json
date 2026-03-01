@@ -1,6 +1,6 @@
 {
   "name": "karp-bible-code",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AI-assisted ELS Bible code research with semantic-code correlation. By SoulDriver.",
   "main": "server/index.js",
   "author": "SoulDriver <hello@souldriver.com.au>",

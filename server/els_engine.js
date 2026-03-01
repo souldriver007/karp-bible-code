@@ -15,14 +15,22 @@ const { Worker, isMainThread, parentPort, workerData } = require('worker_threads
 const os = require('os');
 
 // ---------------------------------------------------------------------------
+// Safety Limits
+// ---------------------------------------------------------------------------
+const MIN_TERM_LENGTH = 3;   // Minimum letters (2-letter terms crash via combinatorial explosion)
+const MAX_HITS = 10000;       // Hard cap — early termination if exceeded
+
+// ---------------------------------------------------------------------------
 // WORKER THREAD CODE — ELS search inside a worker
 // ---------------------------------------------------------------------------
 
 if (!isMainThread) {
-    const { stream, term, skipStart, skipEnd, directions } = workerData;
+    const { stream, term, skipStart, skipEnd, directions, maxHits } = workerData;
     const hits = [];
+    const hitCap = maxHits || MAX_HITS;
     const termLen = term.length;
     const streamLen = stream.length;
+    let capped = false;
 
     // Build first-letter index for this worker
     const firstPositions = [];
@@ -31,7 +39,9 @@ if (!isMainThread) {
     }
 
     for (const dir of directions) {
+        if (capped) break;
         for (let skip = skipStart; skip <= skipEnd; skip++) {
+            if (capped) break;
             for (const start of firstPositions) {
                 const endPos = start + dir * ((termLen - 1) * skip);
                 if (endPos < 0 || endPos >= streamLen) continue;
@@ -56,12 +66,13 @@ if (!isMainThread) {
                         direction: dir === 1 ? 'forward' : 'reverse',
                         positions
                     });
+                    if (hits.length >= hitCap) { capped = true; break; }
                 }
             }
         }
     }
 
-    parentPort.postMessage(hits);
+    parentPort.postMessage({ hits, capped });
     process.exit(0);
 }
 
@@ -588,7 +599,7 @@ function elsSearchSync(streamId, term, { minSkip = 1, maxSkip = 3000, direction 
     if (!data) throw new Error(`Stream not found: ${streamId}`);
 
     term = term.toUpperCase().replace(/[^A-Z]/g, '');
-    if (!term || term.length < 2) throw new Error('Term must be at least 2 letters (A-Z only)');
+    if (!term || term.length < MIN_TERM_LENGTH) throw new Error(`Term must be at least ${MIN_TERM_LENGTH} letters (A-Z only). Short terms produce too many hits and can crash the server.`);
 
     const stream = data.stream;
     const streamLen = stream.length;
@@ -609,9 +620,12 @@ function elsSearchSync(streamId, term, { minSkip = 1, maxSkip = 3000, direction 
 
     const hits = [];
     const termLen = term.length;
+    let capped = false;
 
     for (const dir of directions) {
+        if (capped) break;
         for (let skip = minSkip; skip <= maxSkip; skip++) {
+            if (capped) break;
             for (const start of firstPositions) {
                 const endPos = start + dir * ((termLen - 1) * skip);
                 if (endPos < 0 || endPos >= streamLen) continue;
@@ -630,12 +644,13 @@ function elsSearchSync(streamId, term, { minSkip = 1, maxSkip = 3000, direction 
 
                 if (match) {
                     hits.push({ term, start, skip, direction: dir === 1 ? 'forward' : 'reverse', positions });
+                    if (hits.length >= MAX_HITS) { capped = true; break; }
                 }
             }
         }
     }
 
-    return hits;
+    return { hits, capped };
 }
 
 /**
@@ -647,7 +662,7 @@ function elsSearchParallel(streamId, term, { minSkip = 1, maxSkip = 3000, direct
     if (!data) return Promise.reject(new Error(`Stream not found: ${streamId}`));
 
     term = term.toUpperCase().replace(/[^A-Z]/g, '');
-    if (!term || term.length < 2) return Promise.reject(new Error('Term must be at least 2 letters (A-Z only)'));
+    if (!term || term.length < MIN_TERM_LENGTH) return Promise.reject(new Error(`Term must be at least ${MIN_TERM_LENGTH} letters (A-Z only). Short terms produce too many hits and can crash the server.`));
 
     const stream = data.stream;
     maxSkip = Math.min(maxSkip, Math.floor(stream.length / term.length));
@@ -660,13 +675,17 @@ function elsSearchParallel(streamId, term, { minSkip = 1, maxSkip = 3000, direct
     if (direction === 'both' || direction === 'forward') directions.push(1);
     if (direction === 'both' || direction === 'reverse') directions.push(-1);
 
+    // Each worker gets a share of the global hit cap
+    const perWorkerCap = Math.ceil(MAX_HITS / Math.max(1, Math.min(numThreads, totalSkips)));
+
     return new Promise((resolve, reject) => {
         const allHits = [];
         let completed = 0;
+        let anyCapped = false;
         const actualThreads = Math.min(numThreads, totalSkips);
 
         if (actualThreads === 0) {
-            resolve([]);
+            resolve({ hits: [], capped: false });
             return;
         }
 
@@ -676,24 +695,30 @@ function elsSearchParallel(streamId, term, { minSkip = 1, maxSkip = 3000, direct
 
             if (skipStart > maxSkip) {
                 completed++;
-                if (completed === actualThreads) resolve(allHits);
+                if (completed === actualThreads) resolve({ hits: allHits, capped: anyCapped });
                 continue;
             }
 
             const worker = new Worker(__filename, {
-                workerData: { stream, term, skipStart, skipEnd, directions }
+                workerData: { stream, term, skipStart, skipEnd, directions, maxHits: perWorkerCap }
             });
 
-            worker.on('message', (hits) => {
-                allHits.push(...hits);
+            worker.on('message', (result) => {
+                allHits.push(...result.hits);
+                if (result.capped) anyCapped = true;
                 completed++;
-                if (completed === actualThreads) resolve(allHits);
+                if (completed === actualThreads) {
+                    // Apply global cap across all worker results
+                    const globalCapped = anyCapped || allHits.length >= MAX_HITS;
+                    const trimmed = allHits.slice(0, MAX_HITS);
+                    resolve({ hits: trimmed, capped: globalCapped });
+                }
             });
 
             worker.on('error', (err) => {
                 log('ERROR', `Worker ${t} error: ${err.message}`);
                 completed++;
-                if (completed === actualThreads) resolve(allHits);
+                if (completed === actualThreads) resolve({ hits: allHits, capped: anyCapped });
             });
 
             worker.on('exit', (code) => {
@@ -707,7 +732,7 @@ function elsSearchParallel(streamId, term, { minSkip = 1, maxSkip = 3000, direct
         setTimeout(() => {
             if (completed < actualThreads) {
                 log('WARN', `ELS search timeout — ${completed}/${actualThreads} workers completed`);
-                resolve(allHits);
+                resolve({ hits: allHits, capped: true });
             }
         }, 60000);
     });
@@ -727,6 +752,12 @@ async function search(streamId, term, options = {}) {
         mapVerses = true
     } = options;
 
+    // Enforce minimum term length before any work
+    const cleanTerm = (term || '').toUpperCase().replace(/[^A-Z]/g, '');
+    if (!cleanTerm || cleanTerm.length < MIN_TERM_LENGTH) {
+        throw new Error(`Term must be at least ${MIN_TERM_LENGTH} letters (A-Z only). Short terms produce too many hits and can crash the server.`);
+    }
+
     const startTime = Date.now();
     const data = getStream(streamId);
 
@@ -734,13 +765,15 @@ async function search(streamId, term, options = {}) {
     const totalSkips = maxSkip - minSkip + 1;
     const useParallel = parallel && totalSkips > 500;
 
-    let hits;
+    let result;
     if (useParallel) {
-        hits = await elsSearchParallel(streamId, term, { minSkip, maxSkip, direction });
+        result = await elsSearchParallel(streamId, term, { minSkip, maxSkip, direction });
     } else {
-        hits = elsSearchSync(streamId, term, { minSkip, maxSkip, direction });
+        result = elsSearchSync(streamId, term, { minSkip, maxSkip, direction });
     }
 
+    let hits = result.hits;
+    const hitsCapped = result.capped;
     const elapsed = Date.now() - startTime;
 
     // Enrich hits with verse mappings
@@ -767,6 +800,8 @@ async function search(streamId, term, options = {}) {
         stream_name: data ? STREAM_SCOPES[streamId]?.display || streamId.toUpperCase() : streamId,
         total_letters: data ? data.totalLetters : 0,
         hit_count: hits.length,
+        hits_capped: hitsCapped,
+        max_hits: MAX_HITS,
         elapsed_ms: elapsed,
         search_mode: useParallel ? 'parallel' : 'sync',
         skip_range: { min: minSkip, max: maxSkip },
@@ -889,5 +924,7 @@ module.exports = {
 
     // Constants
     STREAM_SCOPES,
-    BOOK_ORDER
+    BOOK_ORDER,
+    MIN_TERM_LENGTH,
+    MAX_HITS
 };

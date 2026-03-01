@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "karp-bible-code",
   "display_name": "KARP Bible Code",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AI-assisted ELS (Equidistant Letter Spacing) Bible code research engine with statistical significance testing. Search for hidden letter patterns in the Bible's continuous text, cross-reference terms for proximity and clustering, run Monte Carlo simulations, and visualise results in an interactive matrix grid. Complete KJV Bible pre-loaded (31,102 verses). Built on KARP Word Graph — includes full scripture study tools, knowledge graph, and semantic search. Web UI at localhost:3458.",
   "author": {
     "name": "SoulDriver",

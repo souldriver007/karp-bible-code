@@ -969,6 +969,7 @@ let matrixState = {
     streamId: 'genesis',
     streamData: null,    // { total_letters, ... } from API
     streamLetters: null, // Raw A-Z string (eagerly loaded)
+    loadedStreamId: null, // Which stream the letters/verseIndex actually belong to
     verseIndex: null,    // [[cumLen, book, chapter, verse], ...] for pos→verse lookup
     positionMap: {},     // position -> [{ term, color, hitIndex }]
     intersections: new Set(),
@@ -992,14 +993,20 @@ async function renderMatrix(el) {
                     <div class="control-group">
                         <label>Stream</label>
                         <select id="mx-stream">
-                            <option value="genesis">Genesis (151K letters)</option>
-                            <option value="torah">Torah (634K letters)</option>
-                            <option value="full">Full Bible (3.2M letters)</option>
+                            <optgroup label="Composite Streams">
+                                <option value="genesis">Genesis (151K letters)</option>
+                                <option value="torah">Torah / Pentateuch (634K letters)</option>
+                                <option value="ot">Old Testament</option>
+                                <option value="nt">New Testament</option>
+                                <option value="full">Full Bible (3.2M letters)</option>
+                            </optgroup>
+                            <optgroup label="Old Testament" id="mx-stream-ot"></optgroup>
+                            <optgroup label="New Testament" id="mx-stream-nt"></optgroup>
                         </select>
                     </div>
                     <div class="control-group">
-                        <label>Term (A-Z letters)</label>
-                        <input id="mx-term" type="text" placeholder="e.g. JESUS, MESSIAH" style="text-transform:uppercase;">
+                        <label>Term (A-Z, minimum 3 letters)</label>
+                        <input id="mx-term" type="text" placeholder="e.g. JESUS, MESSIAH" style="text-transform:uppercase;" minlength="3">
                     </div>
                     <div class="inline-fields">
                         <div class="control-group">
@@ -1113,6 +1120,22 @@ async function renderMatrix(el) {
 
     // Set stream dropdown
     document.getElementById('mx-stream').value = matrixState.streamId;
+
+    // Populate per-book options from API
+    try {
+        const books = await api('/api/scripture/books');
+        const otGroup = document.getElementById('mx-stream-ot');
+        const ntGroup = document.getElementById('mx-stream-nt');
+        for (const b of books) {
+            const opt = document.createElement('option');
+            opt.value = b.abbrev.toLowerCase();
+            opt.textContent = `${b.name} (${b.chapter_count} ch)`;
+            if (b.testament === 'OT') otGroup.appendChild(opt);
+            else ntGroup.appendChild(opt);
+        }
+        // Re-set value in case current stream is a book
+        document.getElementById('mx-stream').value = matrixState.streamId;
+    } catch (err) { console.warn('Could not load books for dropdown:', err); }
 
     // Setup canvas
     const viewport = document.getElementById('mx-viewport');
@@ -1262,7 +1285,8 @@ async function matrixLoadStream(streamId) {
     }
 
     // Eagerly load the raw letter string + verse index for LOD rendering + tooltips
-    if (!matrixState.streamLetters || matrixState.streamId !== streamId) {
+    // Use loadedStreamId to track what's actually in memory (fixes genesis-only bug)
+    if (!matrixState.streamLetters || matrixState.loadedStreamId !== streamId) {
         try {
             const [lettersRes, indexRes] = await Promise.all([
                 fetch(`/api/els/streams/${streamId}/letters`),
@@ -1280,10 +1304,12 @@ async function matrixLoadStream(streamId) {
             } else {
                 matrixState.verseIndex = null;
             }
+            matrixState.loadedStreamId = streamId;
         } catch (err) {
             console.error('Failed to load stream data:', err);
             matrixState.streamLetters = null;
             matrixState.verseIndex = null;
+            matrixState.loadedStreamId = null;
         }
     }
 }
@@ -1306,7 +1332,7 @@ function matrixPosToVerse(pos) {
 
 async function matrixSearch() {
     const term = document.getElementById('mx-term').value.toUpperCase().replace(/[^A-Z]/g, '');
-    if (!term || term.length < 2) { toast('Enter a term with 2+ letters', 'error'); return; }
+    if (!term || term.length < 3) { toast('Term must be at least 3 letters (short terms produce too many hits)', 'error'); return; }
 
     const streamId = document.getElementById('mx-stream').value;
     const skipMin = parseInt(document.getElementById('mx-skip-min').value) || 1;
@@ -1355,7 +1381,11 @@ async function matrixSearch() {
         matrixUpdateStatsTerms();
         matrixDraw();
 
-        toast(`Found ${(result.hits || []).length} hits for "${term}"`);
+        if (result.hits_capped) {
+            toast(`⚠ Hit cap reached — showing ${(result.hits || []).length} of ${result.max_hits}+ hits for "${term}". Use narrower skip range or longer term.`, 'error');
+        } else {
+            toast(`Found ${(result.hits || []).length} hits for "${term}"`);
+        }
     } catch (err) {
         toast('Search failed: ' + err.message, 'error');
     } finally {
@@ -1690,6 +1720,10 @@ function matrixClearAll() {
     matrixState.intersections = new Set();
     matrixState.scrollX = 0;
     matrixState.scrollY = 0;
+    matrixState.streamLetters = null;
+    matrixState.verseIndex = null;
+    matrixState.loadedStreamId = null;
+    matrixState.streamData = null;
     matrixRebuildPositionMap();
     matrixUpdateResultsPanel();
     matrixUpdateIntersectionPanel();
