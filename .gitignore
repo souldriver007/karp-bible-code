@@ -1,0 +1,23 @@
+node_modules/
+dist/
+snapshots/
+.claude/
+
+# Data files (live DB should never be committed)
+*.db
+auth.json
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts
+*.mcpb
+*.tgz

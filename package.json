@@ -1,0 +1,48 @@
+{
+  "name": "karp-bible-code",
+  "version": "1.0.0",
+  "description": "AI-assisted ELS Bible code research with semantic-code correlation. By SoulDriver.",
+  "main": "server/index.js",
+  "author": "SoulDriver <hello@souldriver.com.au>",
+  "license": "MIT",
+  "homepage": "https://souldriver.com.au/karp-tools.html",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/souldriver007/karp-bible-code"
+  },
+  "keywords": [
+    "mcp",
+    "claude",
+    "bible-code",
+    "els",
+    "equidistant-letter-spacing",
+    "scripture",
+    "semantic-search",
+    "knowledge-graph",
+    "souldriver",
+    "karp"
+  ],
+  "dependencies": {
+    "@xenova/transformers": "^2.17.0",
+    "express": "^4.18.0",
+    "sql.js": "^1.14.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "ingest": "node scripts/ingest_bible.js",
+    "test": "jest --verbose",
+    "test:streams": "node scripts/test_streams.js",
+    "test:tools": "node scripts/test_els_tools.js",
+    "test:proximity": "node scripts/test_proximity.js",
+    "test:stats": "node scripts/test_stats.js",
+    "test:all": "node scripts/test_streams.js && node scripts/test_els_tools.js && node scripts/test_proximity.js && node scripts/test_stats.js",
+    "clean": "node scripts/clean_for_dist.js",
+    "build": "node scripts/build_mcpb.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

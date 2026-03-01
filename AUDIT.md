@@ -1,0 +1,1 @@
+Placeholder — copying from Claude's environment

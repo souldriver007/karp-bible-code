@@ -1,0 +1,118 @@
+{
+  "manifest_version": "0.3",
+  "name": "karp-bible-code",
+  "display_name": "KARP Bible Code",
+  "version": "1.0.0",
+  "description": "AI-assisted ELS (Equidistant Letter Spacing) Bible code research engine with statistical significance testing. Search for hidden letter patterns in the Bible's continuous text, cross-reference terms for proximity and clustering, run Monte Carlo simulations, and visualise results in an interactive matrix grid. Complete KJV Bible pre-loaded (31,102 verses). Built on KARP Word Graph — includes full scripture study tools, knowledge graph, and semantic search. Web UI at localhost:3458.",
+  "author": {
+    "name": "SoulDriver",
+    "url": "https://souldriver.com.au"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/souldriver007/karp-bible-code"
+  },
+  "icon": "icon.png",
+  "license": "MIT",
+  "privacy_policies": [
+    "https://github.com/souldriver007/karp-bible-code/blob/main/PRIVACY.md"
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "BUNDLE_PATH": "${__dirname}",
+        "UI_PORT": "${user_config.ui_port}",
+        "UI_PASSWORD": "${user_config.ui_password}"
+      }
+    }
+  },
+  "user_config": {
+    "ui_port": {
+      "type": "string",
+      "title": "Web UI Port",
+      "description": "Port for the local web UI (default: 3458). Open localhost:3458 in your browser for the ELS Matrix visualiser.",
+      "required": false,
+      "default": "3458"
+    },
+    "ui_password": {
+      "type": "string",
+      "title": "Web UI Password",
+      "description": "Protects the web UI with a passphrase. If left blank, you'll be prompted on first visit.",
+      "required": false
+    }
+  },
+  "tools": [
+    {
+      "name": "els_search",
+      "description": "Search for a term encoded at equidistant letter spacing (ELS) in the Bible's continuous letter stream."
+    },
+    {
+      "name": "els_session",
+      "description": "Create, view, or list ELS research sessions to group related searches."
+    },
+    {
+      "name": "els_history",
+      "description": "Browse past ELS searches with filters — terms, streams, sessions."
+    },
+    {
+      "name": "els_streams",
+      "description": "List available letter streams with statistics and letter frequency analysis."
+    },
+    {
+      "name": "els_research_stats",
+      "description": "Aggregate statistics for the Bible code research system."
+    },
+    {
+      "name": "els_proximity",
+      "description": "Cross-reference two terms to find shared letter positions and closest approaches."
+    },
+    {
+      "name": "els_cluster",
+      "description": "Find dense regions where multiple search terms converge in the letter stream."
+    },
+    {
+      "name": "els_sweep",
+      "description": "Scan entire research history for unexpected connections between terms searched at different times."
+    },
+    {
+      "name": "els_stats",
+      "description": "Statistical significance testing — expected frequency, Poisson p-value, and Monte Carlo simulation."
+    },
+    {
+      "name": "read_scripture",
+      "description": "Read specific scripture verses. Accepts references like 'John 3:16', 'Genesis 1:1-5', or 'Psalm 23'."
+    },
+    {
+      "name": "search_scripture",
+      "description": "Semantic search across all scripture by meaning — e.g. 'hope in suffering', 'messianic prophecy'."
+    },
+    {
+      "name": "study_passage",
+      "description": "Deep study mode — verse text, surrounding context, and your study notes on a passage."
+    },
+    {
+      "name": "remember",
+      "description": "Store study notes, prayers, insights, cross-references, or memory verses in the knowledge graph."
+    },
+    {
+      "name": "recall",
+      "description": "Semantic search across your personal study notes and knowledge graph."
+    },
+    {
+      "name": "connect",
+      "description": "Create a named relationship between two nodes in the knowledge graph."
+    },
+    {
+      "name": "kg_status",
+      "description": "Knowledge graph and ELS engine health check."
+    },
+    {
+      "name": "snapshot",
+      "description": "Create a backup snapshot of the entire database."
+    }
+  ]
+}

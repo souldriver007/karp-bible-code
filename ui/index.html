@@ -1,0 +1,3297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KARP Bible Code — ELS Research Engine</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+/* ============================================================================
+   KARP Graph Lite — UI Styles
+   SoulDriver Dark Theme — Teal + Charcoal
+   ============================================================================ */
+
+:root {
+    --bg-primary: #0f1117;
+    --bg-secondary: #1a1d27;
+    --bg-tertiary: #242836;
+    --bg-hover: #2d3244;
+    --border: #333849;
+    --text-primary: #e8eaf0;
+    --text-secondary: #9ca3b8;
+    --text-muted: #6b7394;
+    --teal: #00d4aa;
+    --teal-dim: #00a88a;
+    --teal-glow: rgba(0, 212, 170, 0.15);
+    --red: #ff5c6c;
+    --red-dim: rgba(255, 92, 108, 0.15);
+    --amber: #ffb547;
+    --blue: #5c9eff;
+    --purple: #b47cff;
+    --green: #4cdf8b;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+/* --- Layout --- */
+.app { display: flex; height: 100vh; }
+
+.sidebar {
+    width: 220px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.main { flex: 1; overflow-y: auto; padding: 24px 32px; }
+
+/* --- Sidebar --- */
+.logo {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+}
+
+.logo h1 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--teal);
+    letter-spacing: 1px;
+}
+
+.logo .subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.nav { padding: 12px 0; flex: 1; }
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+}
+
+.nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.nav-item.active {
+    color: var(--teal);
+    background: var(--teal-glow);
+    border-left-color: var(--teal);
+}
+
+.nav-item .icon { font-size: 18px; width: 24px; text-align: center; }
+
+.sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.sidebar-footer a { color: var(--teal-dim); text-decoration: none; }
+.sidebar-footer a:hover { color: var(--teal); }
+
+/* --- Page Headers --- */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.page-header h2 { font-size: 22px; font-weight: 600; }
+
+/* --- Cards --- */
+.card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+}
+
+.stat-card .value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--teal);
+}
+
+.stat-card .label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* --- Buttons --- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn:hover { background: var(--bg-hover); border-color: var(--text-muted); }
+
+.btn-primary {
+    background: var(--teal);
+    color: var(--bg-primary);
+    border-color: var(--teal);
+    font-weight: 600;
+}
+
+.btn-primary:hover { background: var(--teal-dim); }
+
+.btn-danger { border-color: var(--red); color: var(--red); }
+.btn-danger:hover { background: var(--red-dim); }
+
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+/* --- Search Bar --- */
+.search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.search-bar input {
+    flex: 1;
+    padding: 10px 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+}
+
+.search-bar input:focus { border-color: var(--teal); }
+.search-bar input::placeholder { color: var(--text-muted); }
+
+/* --- Filters --- */
+.filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.filter-chip {
+    padding: 5px 12px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.filter-chip:hover { border-color: var(--teal-dim); color: var(--text-primary); }
+.filter-chip.active { background: var(--teal-glow); border-color: var(--teal); color: var(--teal); }
+
+/* --- Node Cards --- */
+.node-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.node-card:hover { border-color: var(--teal-dim); background: var(--bg-tertiary); }
+
+.node-card .node-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.node-card .node-type {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg-primary);
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.node-card .node-summary {
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.node-card .node-detail {
+    font-size: 13px;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    margin-bottom: 8px;
+}
+
+.node-card .node-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.node-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+
+.tag {
+    font-size: 11px;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: var(--bg-primary);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+}
+
+/* --- Modal --- */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.active { display: flex; }
+
+.modal {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.modal h3 { font-size: 18px; margin-bottom: 16px; }
+
+.modal .field { margin-bottom: 14px; }
+
+.modal label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.modal input, .modal textarea, .modal select {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+}
+
+.modal input:focus, .modal textarea:focus { border-color: var(--teal); }
+.modal textarea { resize: vertical; min-height: 80px; }
+
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+/* --- Graph View --- */
+#graph-container { width: 100%; height: calc(100vh - 140px); position: relative; }
+#graph-svg { width: 100%; height: 100%; }
+
+.graph-node { cursor: pointer; }
+.graph-node circle { transition: all 0.15s; }
+.graph-node:hover circle { stroke: var(--teal); stroke-width: 2; }
+.graph-node text { font-size: 11px; fill: var(--text-secondary); pointer-events: none; }
+.graph-link { stroke: var(--border); stroke-opacity: 0.6; }
+.graph-link-label { font-size: 9px; fill: var(--text-muted); }
+
+/* --- Proposal Banner --- */
+.proposal-banner {
+    background: linear-gradient(135deg, rgba(0,212,170,0.1), rgba(180,124,255,0.1));
+    border: 1px solid var(--teal-dim);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.proposal-banner .proposal-info { flex: 1; }
+.proposal-banner .proposal-type { font-weight: 600; color: var(--teal); }
+.proposal-banner .proposal-desc { font-size: 13px; color: var(--text-secondary); }
+.proposal-actions { display: flex; gap: 8px; }
+
+/* --- Type Card --- */
+.type-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.type-card .type-icon { font-size: 24px; }
+.type-card .type-info { flex: 1; }
+.type-card .type-name { font-weight: 600; font-size: 14px; }
+.type-card .type-desc { font-size: 12px; color: var(--text-muted); }
+.type-card .type-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--teal-glow);
+    color: var(--teal);
+}
+
+/* --- Snapshot List --- */
+.snapshot-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+}
+
+.snapshot-row:last-child { border-bottom: none; }
+.snapshot-name { color: var(--text-primary); font-family: monospace; font-size: 12px; }
+.snapshot-meta { color: var(--text-muted); font-size: 12px; }
+
+/* --- Empty State --- */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+.empty-state h3 { color: var(--text-secondary); margin-bottom: 8px; }
+.empty-state p { font-size: 14px; max-width: 400px; margin: 0 auto; }
+
+/* --- Loading --- */
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--teal);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 10px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- Login Screen --- */
+.login-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--bg-primary);
+    z-index: 3000;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.login-overlay.active { display: flex; }
+
+.login-box {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 40px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.login-box h2 {
+    color: var(--teal);
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.login-box .login-subtitle {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-bottom: 24px;
+}
+
+.login-box input[type="password"] {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 15px;
+    outline: none;
+    margin-bottom: 12px;
+}
+
+.login-box input[type="password"]:focus { border-color: var(--teal); }
+
+.login-box .remember-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    justify-content: center;
+}
+
+.login-box .remember-row label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.login-box .remember-row input[type="checkbox"] {
+    accent-color: var(--teal);
+    cursor: pointer;
+}
+
+.login-box .login-warning {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.login-error {
+    color: var(--red);
+    font-size: 13px;
+    margin-bottom: 12px;
+    display: none;
+}
+
+/* --- Toast --- */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 20px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--teal);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 13px;
+    z-index: 2000;
+    box-shadow: var(--shadow);
+    animation: slideIn 0.3s ease;
+}
+
+.toast.error { border-color: var(--red); }
+
+@keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .sidebar { width: 60px; }
+    .sidebar .nav-item span { display: none; }
+    .sidebar .logo h1 { font-size: 12px; }
+    .sidebar .logo .subtitle { display: none; }
+    .sidebar-footer { display: none; }
+    .main { padding: 16px; }
+    .card-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* --- Scripture Reader --- */
+.scripture-layout { display: flex; gap: 24px; margin-top: 16px; }
+.book-panel { width: 260px; flex-shrink: 0; }
+.reading-panel { flex: 1; min-width: 0; }
+
+.testament-tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+.testament-tab {
+    padding: 6px 14px; border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--bg-secondary); color: var(--text-secondary); cursor: pointer;
+    font-size: 13px; transition: all 0.15s;
+}
+.testament-tab:hover { border-color: var(--teal-dim); color: var(--text-primary); }
+.testament-tab.active { background: var(--teal-glow); border-color: var(--teal); color: var(--teal); }
+
+.book-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    max-height: 65vh; overflow-y: auto; padding-right: 4px;
+}
+.book-btn {
+    padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border);
+    background: var(--bg-secondary); color: var(--text-secondary); cursor: pointer;
+    font-size: 12px; text-align: left; transition: all 0.12s; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+}
+.book-btn:hover { border-color: var(--teal-dim); color: var(--text-primary); background: var(--bg-hover); }
+.book-btn.active { border-color: var(--teal); color: var(--teal); background: var(--teal-glow); }
+
+.chapter-nav { display: flex; flex-wrap: wrap; gap: 4px; margin: 12px 0; }
+.ch-btn {
+    width: 36px; height: 32px; border-radius: 4px; border: 1px solid var(--border);
+    background: var(--bg-secondary); color: var(--text-secondary); cursor: pointer;
+    font-size: 13px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.12s;
+}
+.ch-btn:hover { border-color: var(--teal-dim); color: var(--text-primary); }
+.ch-btn.active { border-color: var(--teal); color: var(--teal); background: var(--teal-glow); }
+
+.verse-container {
+    background: var(--bg-secondary); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 28px 32px;
+    max-height: 70vh; overflow-y: auto; line-height: 1.85;
+}
+.verse-container h3 {
+    color: var(--teal); font-size: 18px; margin-bottom: 16px;
+    padding-bottom: 12px; border-bottom: 1px solid var(--border);
+}
+.verse { margin-bottom: 4px; color: var(--text-primary); font-size: 15px; }
+.verse .vnum {
+    color: var(--teal); font-size: 11px; font-weight: 700;
+    vertical-align: super; margin-right: 4px; opacity: 0.8;
+}
+.verse-container .empty {
+    color: var(--text-muted); text-align: center; padding: 60px 20px;
+    font-style: italic;
+}
+
+.scripture-search {
+    display: flex; gap: 8px; margin-bottom: 16px;
+}
+.scripture-search input {
+    flex: 1; padding: 8px 14px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--bg-secondary);
+    color: var(--text-primary); font-size: 14px; outline: none;
+}
+.scripture-search input:focus { border-color: var(--teal); }
+.scripture-search input::placeholder { color: var(--text-muted); }
+
+.search-results { margin-top: 12px; }
+.search-result {
+    background: var(--bg-secondary); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 18px; margin-bottom: 8px;
+    cursor: pointer; transition: all 0.12s;
+}
+.search-result:hover { border-color: var(--teal-dim); background: var(--bg-hover); }
+.search-result .ref { color: var(--teal); font-weight: 600; font-size: 14px; }
+.search-result .preview { color: var(--text-secondary); font-size: 13px; margin-top: 4px; line-height: 1.5; }
+.search-result .score { color: var(--text-muted); font-size: 11px; float: right; }
+
+@media (max-width: 800px) {
+    .scripture-layout { flex-direction: column; }
+    .book-panel { width: 100%; }
+    .book-grid { grid-template-columns: repeat(4, 1fr); max-height: 30vh; }
+}
+
+/* ============================================================================
+   ELS Matrix — Letter Grid Visualization
+   ============================================================================ */
+
+.matrix-layout { display: flex; gap: 16px; height: calc(100vh - 100px); }
+.matrix-controls { width: 280px; flex-shrink: 0; overflow-y: auto; }
+.matrix-viewport { flex: 1; position: relative; overflow: hidden; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+
+.matrix-controls .control-group { margin-bottom: 14px; }
+.matrix-controls .control-group label { display: block; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.matrix-controls input, .matrix-controls select {
+    width: 100%; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text-primary); font-size: 13px; outline: none;
+}
+.matrix-controls input:focus, .matrix-controls select:focus { border-color: var(--teal); }
+
+.matrix-controls .inline-fields { display: flex; gap: 8px; }
+.matrix-controls .inline-fields > div { flex: 1; }
+
+.hit-list { max-height: 300px; overflow-y: auto; margin-top: 8px; }
+.hit-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 10px; border-radius: 4px; font-size: 12px;
+    cursor: pointer; transition: all 0.12s; border: 1px solid transparent;
+}
+.hit-item:hover { background: var(--bg-hover); border-color: var(--border); }
+.hit-item.active { background: var(--teal-glow); border-color: var(--teal); color: var(--teal); }
+.hit-item .hit-skip { font-family: monospace; color: var(--teal); font-weight: 600; }
+.hit-item .hit-verse { color: var(--text-secondary); }
+.hit-item .hit-dir { font-size: 10px; color: var(--text-muted); }
+
+.matrix-canvas { display: block; image-rendering: pixelated; }
+
+.matrix-info-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 8px 14px; background: rgba(15,17,23,0.92);
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--text-secondary); z-index: 10;
+}
+
+.matrix-info-bar .hover-info { color: var(--teal); font-family: monospace; }
+
+.term-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary); }
+.legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.15); }
+
+.matrix-stats {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px;
+}
+.matrix-stat { background: var(--bg-primary); border-radius: 4px; padding: 6px 10px; text-align: center; }
+.matrix-stat .val { font-size: 16px; font-weight: 700; color: var(--teal); }
+.matrix-stat .lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+
+.intersection-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 10px;
+    background: rgba(255, 92, 108, 0.15); border: 1px solid var(--red);
+    color: var(--red); font-size: 11px; font-weight: 600;
+}
+
+@keyframes intersectionPulse {
+    0%, 100% { box-shadow: 0 0 4px rgba(255,200,60,0.3); }
+    50% { box-shadow: 0 0 12px rgba(255,200,60,0.7); }
+}
+
+#mx-intersection-list .hit-item { animation: intersectionPulse 2s ease-in-out infinite; }
+
+.search-running { opacity: 0.6; pointer-events: none; }
+
+/* --- Matrix Right Panel --- */
+.matrix-right-panel {
+    width: 300px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.matrix-right-panel .card { margin-bottom: 12px; }
+
+.verse-context-panel {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    line-height: 1.8;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 200px;
+}
+
+.verse-context-panel h4 { color: var(--teal); font-size: 14px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.verse-context-panel .verse { font-size: 14px; margin-bottom: 3px; }
+.verse-context-panel .verse .vnum { color: var(--teal); font-size: 10px; font-weight: 700; vertical-align: super; margin-right: 3px; opacity: 0.8; }
+.verse-context-panel .empty-ctx { color: var(--text-muted); font-size: 13px; text-align: center; padding: 30px 10px; font-style: italic; }
+
+/* --- Matrix Tooltip --- */
+.matrix-tooltip {
+    position: absolute;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--teal);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-family: monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    pointer-events: none;
+    z-index: 100;
+    max-width: 500px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    white-space: nowrap;
+}
+
+.matrix-tooltip .tt-letters { letter-spacing: 1px; }
+.matrix-tooltip .tt-hit { color: var(--teal); font-weight: 700; background: rgba(0,212,170,0.15); padding: 0 1px; border-radius: 2px; }
+.matrix-tooltip .tt-intersection { color: #fff; font-weight: 700; background: rgba(255,255,255,0.2); padding: 0 1px; border-radius: 2px; }
+.matrix-tooltip .tt-meta { font-family: -apple-system, sans-serif; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.matrix-tooltip .tt-skip-hint { font-family: -apple-system, sans-serif; font-size: 10px; color: var(--teal-dim); margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="logo">
+            <h1>BIBLE CODE</h1>
+            <div class="subtitle">ELS Research Engine</div>
+        </div>
+        <div class="nav">
+            <div class="nav-item active" data-page="dashboard">
+                <span class="icon">📊</span><span>Dashboard</span>
+            </div>
+            <div class="nav-item" data-page="matrix">
+                <span class="icon">🔢</span><span>ELS Matrix</span>
+            </div>
+            <div class="nav-item" data-page="scripture">
+                <span class="icon">📖</span><span>Scripture</span>
+            </div>
+            <div class="nav-item" data-page="browse">
+                <span class="icon">📂</span><span>Browse</span>
+            </div>
+            <div class="nav-item" data-page="graph">
+                <span class="icon">🕸️</span><span>Graph</span>
+            </div>
+            <div class="nav-item" data-page="types">
+                <span class="icon">🧬</span><span>Types</span>
+            </div>
+            <div class="nav-item" data-page="settings">
+                <span class="icon">⚙️</span><span>Settings</span>
+            </div>
+        </div>
+        <div class="sidebar-footer">
+            <a href="https://souldriver.com.au" target="_blank">souldriver.com.au</a><br>
+            <span style="font-size:10px; margin-top:4px; display:block;">
+                Full KARP uses enterprise-grade<br>vector storage & multi-AI deliberation
+            </span>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main" id="main-content">
+        <!-- Pages rendered by JS -->
+    </div>
+</div>
+
+<!-- Login Overlay -->
+<div class="login-overlay" id="login-overlay">
+    <div class="login-box">
+        <h2>KARP GRAPH</h2>
+        <div class="login-subtitle">by SoulDriver</div>
+        <div class="login-error" id="login-error">Incorrect password</div>
+        <input type="password" id="login-password" placeholder="Enter passphrase" onkeydown="if(event.key==='Enter')doLogin()">
+        <div class="remember-row">
+            <input type="checkbox" id="login-remember">
+            <label for="login-remember">Remember this device</label>
+        </div>
+        <button class="btn btn-primary" onclick="doLogin()" style="width:100%;">Unlock</button>
+        <div class="login-warning">
+            ⚠️ Only check "Remember this device" on a trusted personal computer.
+            On shared or public networks, leave unchecked.
+        </div>
+    </div>
+</div>
+
+<!-- First-Run Setup Overlay -->
+<div class="login-overlay" id="setup-overlay">
+    <div class="login-box" style="max-width:440px;">
+        <h2>🔐 First-Time Setup</h2>
+        <div class="login-subtitle">KARP Graph Lite by SoulDriver</div>
+        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:20px; line-height:1.6;">
+            Your knowledge graph web UI needs a security preference.<br>Choose how you'd like to protect it.
+        </p>
+        <div class="login-error" id="setup-error"></div>
+        <div style="text-align:left; margin-bottom:16px;">
+            <label style="font-size:13px; color:var(--text-secondary); display:block; margin-bottom:6px;">Set a passphrase</label>
+            <input type="password" id="setup-password" placeholder="Choose a passphrase (4+ characters)" onkeydown="if(event.key==='Enter')document.getElementById('setup-confirm').focus()" style="width:100%; padding:12px 16px; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-primary); font-size:15px; outline:none; margin-bottom:8px;">
+            <input type="password" id="setup-confirm" placeholder="Confirm passphrase" onkeydown="if(event.key==='Enter')doSetupPassword()" style="width:100%; padding:12px 16px; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-primary); font-size:15px; outline:none;">
+        </div>
+        <button class="btn btn-primary" onclick="doSetupPassword()" style="width:100%; margin-bottom:16px;">🔒 Set Passphrase & Continue</button>
+        <div style="border-top:1px solid var(--border); padding-top:16px;">
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">Or, if this is a private machine and you don’t want a password:</p>
+            <button class="btn" onclick="doSetupTrust()" style="width:100%; font-size:13px;">🏠 Trust This Network (no password)</button>
+            <p style="font-size:11px; color:var(--amber); margin-top:8px;">⚠️ Anyone on localhost will be able to access your knowledge graph without authentication. Only use this on a private personal computer.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Node Detail Modal -->
+<div class="modal-overlay" id="node-modal">
+    <div class="modal" id="node-modal-content">
+        <!-- Filled by JS -->
+    </div>
+</div>
+
+<script>
+// ============================================================================
+// KARP Graph Lite — UI Application
+// ============================================================================
+
+const API = '';  // Same origin
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
+let state = {
+    page: 'dashboard',
+    stats: null,
+    nodes: [],
+    types: [],
+    proposals: [],
+    searchQuery: '',
+    filterType: null,
+    graphData: null,
+    snapshots: []
+};
+
+// ---------------------------------------------------------------------------
+// API Helpers
+// ---------------------------------------------------------------------------
+
+async function api(endpoint, options = {}) {
+    try {
+        const res = await fetch(API + endpoint, {
+            headers: { 'Content-Type': 'application/json' },
+            ...options,
+            body: options.body ? JSON.stringify(options.body) : undefined
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(err.error || 'Request failed');
+        }
+        return await res.json();
+    } catch (err) {
+        toast(err.message, 'error');
+        throw err;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+        state.page = item.dataset.page;
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        item.classList.add('active');
+        renderPage();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Render Router
+// ---------------------------------------------------------------------------
+
+async function renderPage() {
+    const main = document.getElementById('main-content');
+
+    switch (state.page) {
+        case 'dashboard': await renderDashboard(main); break;
+        case 'matrix': await renderMatrix(main); break;
+        case 'scripture': await renderScripture(main); break;
+        case 'browse': await renderBrowse(main); break;
+        case 'graph': await renderGraph(main); break;
+        case 'types': await renderTypes(main); break;
+        case 'settings': await renderSettings(main); break;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ELS Matrix Page — Canvas Letter Grid with Highlighted Sequences
+// ---------------------------------------------------------------------------
+
+// Term colors for multi-term visualization
+const TERM_COLORS = [
+    '#00d4aa', '#ff5c6c', '#5c9eff', '#ffb547', '#b47cff',
+    '#4cdf8b', '#ff8c5c', '#5cffdf', '#ff5cba', '#c8ff5c'
+];
+const INTERSECTION_COLOR = '#ffffff';
+const BG_LETTER_COLOR = '#2a2e3d';
+const BG_COLOR = '#0f1117';
+
+let matrixState = {
+    searches: [],        // Array of { term, hits, color }
+    activeHit: null,     // Currently focused hit
+    gridWidth: 80,       // Columns in the grid
+    cellSize: 11,        // Pixels per cell
+    streamId: 'genesis',
+    streamData: null,    // { total_letters, ... } from API
+    streamLetters: null, // Raw A-Z string (eagerly loaded)
+    verseIndex: null,    // [[cumLen, book, chapter, verse], ...] for pos→verse lookup
+    positionMap: {},     // position -> [{ term, color, hitIndex }]
+    intersections: new Set(),
+    scrollX: 0,
+    scrollY: 0,
+    hoverPos: -1,
+    intersectionPulse: 0,
+    _spinRAF: null
+};
+
+async function renderMatrix(el) {
+    el.innerHTML = `
+        <div class="page-header">
+            <h2>🔢 ELS Matrix</h2>
+            <div style="font-size:13px; color:var(--text-secondary);">Visualise letter sequences in the Bible's continuous text</div>
+        </div>
+        <div class="matrix-layout">
+            <div class="matrix-controls">
+                <div class="card">
+                    <h4 style="margin-bottom:12px; color:var(--teal);">Search</h4>
+                    <div class="control-group">
+                        <label>Stream</label>
+                        <select id="mx-stream">
+                            <option value="genesis">Genesis (151K letters)</option>
+                            <option value="torah">Torah (634K letters)</option>
+                            <option value="full">Full Bible (3.2M letters)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Term (A-Z letters)</label>
+                        <input id="mx-term" type="text" placeholder="e.g. JESUS, MESSIAH" style="text-transform:uppercase;">
+                    </div>
+                    <div class="inline-fields">
+                        <div class="control-group">
+                            <label>Skip Min</label>
+                            <input id="mx-skip-min" type="number" value="1" min="1">
+                        </div>
+                        <div class="control-group">
+                            <label>Skip Max</label>
+                            <input id="mx-skip-max" type="number" value="2000" min="1">
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>Direction</label>
+                        <select id="mx-direction">
+                            <option value="both">Both</option>
+                            <option value="forward">Forward</option>
+                            <option value="reverse">Reverse</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" style="width:100%;" id="mx-search-btn" onclick="matrixSearch()">🔍 Search</button>
+                </div>
+
+                <div class="card" id="mx-results-panel" style="display:none;">
+                    <h4 style="margin-bottom:8px; color:var(--teal);">Results</h4>
+                    <div class="term-legend" id="mx-legend"></div>
+                    <div class="matrix-stats" id="mx-stats"></div>
+                    <div style="margin-top:12px;">
+                        <label style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Hits (click to focus)</label>
+                        <div class="hit-list" id="mx-hit-list"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h4 style="margin-bottom:8px; color:var(--teal);">Grid Controls</h4>
+                    <div class="control-group">
+                        <label>Grid Width (columns): <span id="mx-width-val">${matrixState.gridWidth}</span></label>
+                        <input id="mx-grid-width" type="range" min="20" max="300" value="${matrixState.gridWidth}"
+                            style="width:100%; accent-color:var(--teal);" oninput="matrixSetWidth(this.value)">
+                    </div>
+                    <div class="control-group">
+                        <label>Cell Size: <span id="mx-cell-val">${matrixState.cellSize}px</span></label>
+                        <input id="mx-cell-size" type="range" min="4" max="20" value="${matrixState.cellSize}"
+                            style="width:100%; accent-color:var(--teal);" oninput="matrixSetCellSize(this.value)">
+                    </div>
+                    <button class="btn btn-sm" onclick="matrixSetWidth(Math.max(20, matrixState.activeHit ? matrixState.activeHit.skip : 80))" style="width:100%; margin-top:4px;">
+                        ↔️ Set Width to Active Skip
+                    </button>
+                </div>
+
+                <div class="card">
+                    <h4 style="margin-bottom:8px; color:var(--teal);">Load from History</h4>
+                    <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Load past MCP searches into the matrix</p>
+                    <button class="btn btn-sm" style="width:100%; margin-bottom:8px;" onclick="matrixLoadHistory()">📂 Show Past Searches</button>
+                    <div id="mx-history-list" style="max-height:200px; overflow-y:auto;"></div>
+                </div>
+
+                <div class="card" id="mx-stats-panel">
+                    <h4 style="margin-bottom:8px; color:var(--teal);">Statistics</h4>
+                    <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Significance testing for loaded terms</p>
+                    <div class="control-group">
+                        <label>Term to Analyse</label>
+                        <select id="mx-stats-term" style="width:100%;">
+                            <option value="">Select a term...</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; gap:6px; margin-bottom:8px;">
+                        <button class="btn btn-sm btn-primary" style="flex:1;" onclick="matrixRunStats('poisson')">⚡ Poisson</button>
+                        <button class="btn btn-sm" style="flex:1;" onclick="matrixRunStats('monte_carlo')">🎲 Monte Carlo</button>
+                    </div>
+                    <div class="control-group" id="mx-mc-options" style="display:none;">
+                        <label>Monte Carlo Runs</label>
+                        <select id="mx-mc-runs">
+                            <option value="50">50 (quick ~30s)</option>
+                            <option value="100" selected>100 (standard ~1min)</option>
+                            <option value="500">500 (thorough ~5min)</option>
+                        </select>
+                    </div>
+                    <div id="mx-stats-results" style="margin-top:8px;"></div>
+                </div>
+            </div>
+
+            <div class="matrix-viewport" id="mx-viewport">
+                <canvas class="matrix-canvas" id="mx-canvas"></canvas>
+                <div class="matrix-tooltip" id="mx-tooltip" style="display:none;"></div>
+                <div class="matrix-info-bar" id="mx-info-bar">
+                    <span id="mx-hover-info" class="hover-info">Scroll ↕ · Shift+Scroll ↔ · Drag to pan</span>
+                    <span id="mx-pos-info"></span>
+                </div>
+            </div>
+
+            <!-- Right Panel: Verse Context -->
+            <div class="matrix-right-panel" id="mx-right-panel">
+                <div class="card" style="padding:12px;">
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn btn-sm btn-danger" style="flex:1;" onclick="matrixClearLast()">✕ Clear Last</button>
+                        <button class="btn btn-sm btn-danger" style="flex:1;" onclick="matrixClearAll()">⚠ Reset All</button>
+                    </div>
+                </div>
+                <div class="verse-context-panel" id="mx-verse-context">
+                    <h4>📖 Verse Context</h4>
+                    <div class="empty-ctx" id="mx-verse-content">Click a hit in the list or on the canvas to see the verse where the ELS sequence begins.</div>
+                </div>
+                <div class="card" id="mx-intersection-panel" style="display:none; margin-top:12px;">
+                    <h4 style="color:var(--amber); margin-bottom:8px;">⚡ Intersections</h4>
+                    <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Positions where multiple ELS terms share a letter</p>
+                    <div id="mx-intersection-list" style="max-height:300px; overflow-y:auto;"></div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Set stream dropdown
+    document.getElementById('mx-stream').value = matrixState.streamId;
+
+    // Setup canvas
+    const viewport = document.getElementById('mx-viewport');
+    const canvas = document.getElementById('mx-canvas');
+    const ctx = canvas.getContext('2d');
+
+    // --- Scroll: wheel = vertical, shift+wheel = horizontal, trackpad deltaX = horizontal ---
+    viewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const step = matrixState.cellSize * 5;
+
+        // Horizontal: shift+wheel, or trackpad horizontal swipe (deltaX)
+        if (e.shiftKey) {
+            const delta = Math.sign(e.deltaY || e.deltaX) * step;
+            matrixState.scrollX = Math.max(0, (matrixState.scrollX || 0) + delta);
+        } else if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+            // Trackpad horizontal swipe
+            matrixState.scrollX = Math.max(0, (matrixState.scrollX || 0) + e.deltaX);
+        } else {
+            // Vertical scroll
+            const delta = Math.sign(e.deltaY) * step;
+            matrixState.scrollY = Math.max(0, matrixState.scrollY + delta);
+        }
+        matrixDraw();
+    }, { passive: false });
+
+    // --- Drag to pan (any direction) ---
+    let dragState = { active: false, startX: 0, startY: 0, origScrollX: 0, origScrollY: 0 };
+
+    canvas.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return; // left button only
+        dragState.active = true;
+        dragState.startX = e.clientX;
+        dragState.startY = e.clientY;
+        dragState.origScrollX = matrixState.scrollX || 0;
+        dragState.origScrollY = matrixState.scrollY;
+        canvas.style.cursor = 'grabbing';
+        e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!dragState.active) return;
+        const dx = dragState.startX - e.clientX;
+        const dy = dragState.startY - e.clientY;
+        matrixState.scrollX = Math.max(0, dragState.origScrollX + dx);
+        matrixState.scrollY = Math.max(0, dragState.origScrollY + dy);
+        matrixDraw();
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (dragState.active) {
+            dragState.active = false;
+            const c = document.getElementById('mx-canvas');
+            if (c) c.style.cursor = 'crosshair';
+        }
+    });
+
+    // Handle hover
+    canvas.addEventListener('mousemove', (e) => {
+        if (dragState.active) return; // don't hover while dragging
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const sx = matrixState.scrollX || 0;
+        const col = Math.max(0, Math.floor((x + sx) / matrixState.cellSize));
+        const row = Math.max(0, Math.floor((y + matrixState.scrollY) / matrixState.cellSize));
+        const pos = row * matrixState.gridWidth + col;
+        matrixHover(pos, col, row);
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+        matrixState.hoverPos = -1;
+        document.getElementById('mx-hover-info').textContent = 'Hover over the grid to see letter details';
+        const tooltip = document.getElementById('mx-tooltip');
+        if (tooltip) tooltip.style.display = 'none';
+    });
+
+    // Handle click — find which hit was clicked, load verse context
+    // (only if not dragging — threshold 5px)
+    let clickOrigin = { x: 0, y: 0 };
+    canvas.addEventListener('mousedown', (e2) => { clickOrigin = { x: e2.clientX, y: e2.clientY }; });
+    canvas.addEventListener('click', (e) => {
+        // Ignore if user dragged more than 5px
+        if (Math.abs(e.clientX - clickOrigin.x) > 5 || Math.abs(e.clientY - clickOrigin.y) > 5) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const sx = matrixState.scrollX || 0;
+        const col = Math.max(0, Math.floor((x + sx) / matrixState.cellSize));
+        const row = Math.max(0, Math.floor((y + matrixState.scrollY) / matrixState.cellSize));
+        const pos = row * matrixState.gridWidth + col;
+        const entries = matrixState.positionMap[pos];
+        if (entries && entries.length > 0) {
+            // Find the hit this position belongs to and load verse context
+            const entry = entries[0];
+            const search = matrixState.searches.find(s => s.term === entry.term);
+            if (search && search.hits[entry.hitIndex]) {
+                const hit = search.hits[entry.hitIndex];
+                matrixState.activeHit = { term: entry.term, hitIndex: entry.hitIndex, skip: hit.skip };
+                matrixUpdateResultsPanel();
+                if (hit.start_verse) matrixLoadVerseContext(hit.start_verse);
+            }
+        }
+    });
+
+    // Handle Enter key in term input
+    document.getElementById('mx-term').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') matrixSearch();
+    });
+
+    // Load stream data if we have searches
+    if (matrixState.searches.length > 0) {
+        await matrixLoadStream(matrixState.streamId);
+        matrixRebuildPositionMap();
+        matrixUpdateResultsPanel();
+        matrixUpdateIntersectionPanel();
+        matrixDraw();
+    } else {
+        // Draw empty grid placeholder
+        matrixDrawEmpty(canvas, ctx, viewport);
+    }
+}
+
+function matrixDrawEmpty(canvas, ctx, viewport) {
+    canvas.width = viewport.clientWidth;
+    canvas.height = viewport.clientHeight - 36;
+    ctx.fillStyle = BG_COLOR;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#6b7394';
+    ctx.font = '16px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Search for a term to visualise the letter matrix', canvas.width / 2, canvas.height / 2 - 20);
+    ctx.font = '13px -apple-system, sans-serif';
+    ctx.fillStyle = '#4a5070';
+    ctx.fillText('Set grid width = skip interval to see ELS sequences as vertical columns', canvas.width / 2, canvas.height / 2 + 10);
+}
+
+async function matrixLoadStream(streamId) {
+    // Fetch stream metadata
+    try {
+        const data = await api(`/api/els/streams?id=${streamId}`);
+        const info = Array.isArray(data) ? data.find(s => s.id === streamId) : data;
+        matrixState.streamData = info;
+    } catch (err) {
+        console.error('Failed to load stream metadata:', err);
+    }
+
+    // Eagerly load the raw letter string + verse index for LOD rendering + tooltips
+    if (!matrixState.streamLetters || matrixState.streamId !== streamId) {
+        try {
+            const [lettersRes, indexRes] = await Promise.all([
+                fetch(`/api/els/streams/${streamId}/letters`),
+                fetch(`/api/els/streams/${streamId}/verse-index`)
+            ]);
+            if (lettersRes.ok) {
+                matrixState.streamLetters = await lettersRes.text();
+                console.log(`Loaded ${(matrixState.streamLetters.length / 1000).toFixed(0)}K letters for ${streamId}`);
+            } else {
+                matrixState.streamLetters = null;
+            }
+            if (indexRes.ok) {
+                matrixState.verseIndex = await indexRes.json();
+                console.log(`Loaded ${matrixState.verseIndex.length} verse boundaries for ${streamId}`);
+            } else {
+                matrixState.verseIndex = null;
+            }
+        } catch (err) {
+            console.error('Failed to load stream data:', err);
+            matrixState.streamLetters = null;
+            matrixState.verseIndex = null;
+        }
+    }
+}
+
+// Binary search: position → "BOOK ch:v" using verseIndex [[cumLen, book, ch, verse], ...]
+function matrixPosToVerse(pos) {
+    const idx = matrixState.verseIndex;
+    if (!idx || idx.length === 0) return null;
+
+    let lo = 0, hi = idx.length - 1;
+    while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (idx[mid][0] <= pos) lo = mid + 1;
+        else hi = mid;
+    }
+    if (lo >= idx.length) return null;
+    const [, book, ch, v] = idx[lo];
+    return `${book} ${ch}:${v}`;
+}
+
+async function matrixSearch() {
+    const term = document.getElementById('mx-term').value.toUpperCase().replace(/[^A-Z]/g, '');
+    if (!term || term.length < 2) { toast('Enter a term with 2+ letters', 'error'); return; }
+
+    const streamId = document.getElementById('mx-stream').value;
+    const skipMin = parseInt(document.getElementById('mx-skip-min').value) || 1;
+    const skipMax = parseInt(document.getElementById('mx-skip-max').value) || 2000;
+    const direction = document.getElementById('mx-direction').value;
+
+    const btn = document.getElementById('mx-search-btn');
+    btn.textContent = '⏳ Searching...';
+    btn.classList.add('search-running');
+
+    try {
+        const result = await api('/api/els/searches', {
+            method: 'POST',
+            body: { term, stream: streamId, skip_min: skipMin, skip_max: skipMax, direction }
+        });
+
+        // If stream changed, clear old searches
+        if (streamId !== matrixState.streamId) {
+            matrixState.searches = [];
+            matrixState.streamId = streamId;
+        }
+
+        // Assign a color
+        const colorIdx = matrixState.searches.length % TERM_COLORS.length;
+
+        // Add to searches (or replace if same term exists)
+        const existing = matrixState.searches.findIndex(s => s.term === term);
+        if (existing >= 0) {
+            matrixState.searches[existing] = { term, hits: result.hits || [], color: matrixState.searches[existing].color, searchId: result.search_id };
+        } else {
+            matrixState.searches.push({ term, hits: result.hits || [], color: TERM_COLORS[colorIdx], searchId: result.search_id });
+        }
+
+        // If first search, auto-set grid width to first hit's skip (if meaningful)
+        if (matrixState.searches.length === 1 && result.hits && result.hits.length > 0) {
+            const firstSkip = result.hits[0].skip || 80;
+            matrixState.gridWidth = firstSkip >= 20 ? firstSkip : 80;
+            const slider = document.getElementById('mx-grid-width');
+            if (slider) { slider.value = Math.min(300, matrixState.gridWidth); }
+        }
+
+        await matrixLoadStream(streamId);
+        matrixRebuildPositionMap();
+        matrixUpdateResultsPanel();
+        matrixUpdateIntersectionPanel();
+        matrixUpdateStatsTerms();
+        matrixDraw();
+
+        toast(`Found ${(result.hits || []).length} hits for "${term}"`);
+    } catch (err) {
+        toast('Search failed: ' + err.message, 'error');
+    } finally {
+        btn.textContent = '🔍 Search';
+        btn.classList.remove('search-running');
+    }
+}
+
+function matrixRebuildPositionMap() {
+    matrixState.positionMap = {};
+    matrixState.intersections = new Set();
+
+    for (const search of matrixState.searches) {
+        for (let hi = 0; hi < search.hits.length; hi++) {
+            const hit = search.hits[hi];
+            const positions = hit.positions || [];
+            for (const pos of positions) {
+                if (!matrixState.positionMap[pos]) {
+                    matrixState.positionMap[pos] = [];
+                }
+                matrixState.positionMap[pos].push({ term: search.term, color: search.color, hitIndex: hi, skip: hit.skip });
+                // Mark intersections
+                if (matrixState.positionMap[pos].length > 1) {
+                    matrixState.intersections.add(pos);
+                }
+            }
+        }
+    }
+}
+
+function matrixUpdateResultsPanel() {
+    const panel = document.getElementById('mx-results-panel');
+    if (!panel) return;
+
+    if (matrixState.searches.length === 0) {
+        panel.style.display = 'none';
+        return;
+    }
+    panel.style.display = 'block';
+
+    // Legend
+    const legend = document.getElementById('mx-legend');
+    legend.innerHTML = matrixState.searches.map(s => {
+        const isAligned = s.hits.length > 0 && (s.hits[0].skip === matrixState.gridWidth || s.hits[0].skip === matrixState.gridWidth + 1 || s.hits[0].skip === matrixState.gridWidth - 1);
+        return `<div class="legend-item" style="cursor:pointer; padding:2px 6px; border-radius:4px; ${isAligned ? 'background:var(--teal-glow); border:1px solid var(--teal);' : 'border:1px solid transparent;'}" 
+            onclick="matrixAlignToTerm('${s.term}')" title="Click to align grid to ${s.term}">
+            <div class="legend-swatch" style="background:${s.color};"></div>${s.term} (${s.hits.length})
+            ${isAligned ? '<span style="font-size:9px; color:var(--teal); margin-left:2px;">↑aligned</span>' : '<span style="font-size:9px; color:var(--text-muted); margin-left:2px;">~trace</span>'}
+        </div>`;
+    }).join('');
+
+    // Stats
+    const totalHits = matrixState.searches.reduce((sum, s) => sum + s.hits.length, 0);
+    const stats = document.getElementById('mx-stats');
+    stats.innerHTML = `
+        <div class="matrix-stat"><div class="val">${matrixState.searches.length}</div><div class="lbl">Terms</div></div>
+        <div class="matrix-stat"><div class="val">${totalHits}</div><div class="lbl">Hits</div></div>
+        <div class="matrix-stat"><div class="val">${matrixState.intersections.size}</div><div class="lbl">⚡ Intersections</div></div>
+        <div class="matrix-stat"><div class="val">${matrixState.gridWidth}</div><div class="lbl">Grid Width</div></div>
+    `;
+
+    // Hit list
+    const hitList = document.getElementById('mx-hit-list');
+    let html = '';
+    for (const search of matrixState.searches) {
+        for (let i = 0; i < search.hits.length; i++) {
+            const hit = search.hits[i];
+            const isActive = matrixState.activeHit && matrixState.activeHit.term === search.term && matrixState.activeHit.hitIndex === i;
+            html += `<div class="hit-item ${isActive ? 'active' : ''}" onclick="matrixFocusHit('${search.term}', ${i})">
+                <span><span class="legend-swatch" style="background:${search.color}; width:8px; height:8px; display:inline-block; border-radius:2px; margin-right:4px;"></span>
+                <span class="hit-skip">skip ${hit.skip}</span> <span class="hit-dir">${hit.direction === 1 || hit.direction === 'forward' ? '→' : '←'}</span></span>
+                <span class="hit-verse">${hit.start_verse || ''}</span>
+            </div>`;
+        }
+    }
+    hitList.innerHTML = html;
+}
+
+function matrixUpdateIntersectionPanel() {
+    const panel = document.getElementById('mx-intersection-panel');
+    const list = document.getElementById('mx-intersection-list');
+    if (!panel || !list) return;
+
+    if (matrixState.intersections.size === 0) {
+        panel.style.display = 'none';
+        return;
+    }
+    panel.style.display = 'block';
+
+    // Build intersection details: which terms meet, at what letter, approximate verse
+    const entries = [];
+    for (const pos of matrixState.intersections) {
+        const pEntries = matrixState.positionMap[pos];
+        if (!pEntries || pEntries.length < 2) continue;
+        const terms = [...new Set(pEntries.map(e => e.term))];
+        const letter = matrixState.streamLetters ? matrixState.streamLetters[pos] : '?';
+        // Find a verse reference from any of the hits
+        let verseRef = '';
+        for (const e of pEntries) {
+            const search = matrixState.searches.find(s => s.term === e.term);
+            if (search && search.hits[e.hitIndex]) {
+                const h = search.hits[e.hitIndex];
+                verseRef = h.start_verse || h.mid_verse || '';
+                if (verseRef) break;
+            }
+        }
+        entries.push({ pos, terms, letter, verseRef });
+    }
+
+    // Sort by position
+    entries.sort((a, b) => a.pos - b.pos);
+
+    // Limit display to first 100 for performance
+    const display = entries.slice(0, 100);
+    list.innerHTML = display.map(e => {
+        const termStr = e.terms.map(t => {
+            const s = matrixState.searches.find(s2 => s2.term === t);
+            return `<span style="color:${s ? s.color : 'var(--text-primary)'}; font-weight:600;">${t}</span>`;
+        }).join(' × ');
+        return `<div class="hit-item" onclick="matrixFocusIntersection(${e.pos})" style="border-left:3px solid var(--amber);">
+            <span style="font-size:12px;">${termStr} <span style="color:var(--text-muted);">[${e.letter}]</span></span>
+            <span style="font-size:11px; color:var(--text-muted);">${e.verseRef || 'pos ' + e.pos.toLocaleString()}</span>
+        </div>`;
+    }).join('');
+
+    if (entries.length > 100) {
+        list.innerHTML += `<div style="font-size:11px; color:var(--text-muted); padding:6px; text-align:center;">...and ${entries.length - 100} more</div>`;
+    }
+}
+
+function matrixFocusIntersection(pos) {
+    const gw = matrixState.gridWidth;
+    const row = Math.floor(pos / gw);
+    matrixState.scrollY = Math.max(0, (row - 5) * matrixState.cellSize);
+    // Center horizontally
+    const col = pos % gw;
+    const vpW = document.getElementById('mx-viewport')?.clientWidth || 800;
+    const visibleCols = Math.floor(vpW / matrixState.cellSize);
+    matrixState.scrollX = Math.max(0, (col - Math.floor(visibleCols / 2)) * matrixState.cellSize);
+    matrixState.hoverPos = pos;
+    matrixDraw();
+
+    // Try to load verse context for the intersection
+    const entries = matrixState.positionMap[pos];
+    if (entries) {
+        for (const e of entries) {
+            const search = matrixState.searches.find(s => s.term === e.term);
+            if (search && search.hits[e.hitIndex]) {
+                const hit = search.hits[e.hitIndex];
+                if (hit.start_verse) {
+                    matrixLoadVerseContext(hit.start_verse);
+                    return;
+                }
+            }
+        }
+    }
+}
+
+function matrixFocusHit(term, hitIndex) {
+    const search = matrixState.searches.find(s => s.term === term);
+    if (!search || !search.hits[hitIndex]) return;
+
+    const hit = search.hits[hitIndex];
+    matrixState.activeHit = { term, hitIndex, skip: hit.skip };
+
+    // Set grid width to this hit's skip interval
+    // But enforce a minimum of 20 — skip 1-3 are literal text appearances,
+    // not meaningful ELS patterns worth reshaping the grid for
+    const MIN_GRID_WIDTH = 20;
+    const newWidth = hit.skip >= MIN_GRID_WIDTH ? hit.skip : matrixState.gridWidth;
+    matrixState.gridWidth = Math.max(MIN_GRID_WIDTH, newWidth);
+    const slider = document.getElementById('mx-grid-width');
+    if (slider) slider.value = Math.min(300, matrixState.gridWidth);
+    const valEl = document.getElementById('mx-width-val');
+    if (valEl) valEl.textContent = matrixState.gridWidth;
+
+    // Scroll to the hit's start position
+    const startPos = hit.positions ? hit.positions[0] : (hit.start_pos || 0);
+    const row = Math.floor(startPos / matrixState.gridWidth);
+    const col = startPos % matrixState.gridWidth;
+    matrixState.scrollY = Math.max(0, (row - 5) * matrixState.cellSize);
+    // Center horizontally
+    const vpW = document.getElementById('mx-viewport')?.clientWidth || 800;
+    const visCols = Math.floor(vpW / matrixState.cellSize);
+    matrixState.scrollX = Math.max(0, (col - Math.floor(visCols / 2)) * matrixState.cellSize);
+
+    matrixUpdateResultsPanel();
+    matrixDraw();
+
+    // Auto-load verse context
+    if (hit.start_verse) matrixLoadVerseContext(hit.start_verse);
+}
+
+function matrixAlignToTerm(term) {
+    const search = matrixState.searches.find(s => s.term === term);
+    if (!search || search.hits.length === 0) return;
+
+    // Use the active hit for this term, or default to first hit
+    let hitIdx = 0;
+    if (matrixState.activeHit && matrixState.activeHit.term === term) {
+        hitIdx = matrixState.activeHit.hitIndex;
+    }
+    const hit = search.hits[hitIdx];
+    if (!hit || hit.skip < 2) return;
+
+    const targetWidth = hit.skip;
+    const startWidth = matrixState.gridWidth;
+
+    // --- ANCHOR & SPIN: Find intersection to anchor on ---
+    let anchorPos = null;
+
+    // Look for an actual intersection between the target term and any other loaded term
+    for (const iPos of matrixState.intersections) {
+        const entries = matrixState.positionMap[iPos];
+        if (!entries) continue;
+        const terms = new Set(entries.map(e => e.term));
+        if (terms.has(term) && terms.size > 1) {
+            anchorPos = iPos;
+            break;
+        }
+    }
+
+    // Fallback: use the first position of the target hit
+    if (anchorPos === null) {
+        anchorPos = hit.positions ? hit.positions[0] : (hit.start_pos || 0);
+    }
+
+    // If width isn't actually changing, just snap
+    if (startWidth === targetWidth) {
+        matrixState.activeHit = { term, hitIndex: hitIdx, skip: hit.skip };
+        matrixCenterOnPos(anchorPos, targetWidth);
+        matrixUpdateResultsPanel();
+        matrixDraw();
+        return;
+    }
+
+    // --- ANIMATE: ease gridWidth from startWidth → targetWidth, anchored on anchorPos ---
+    const duration = 600; // ms
+    const startTime = performance.now();
+    const cs = matrixState.cellSize;
+    const vpW = document.getElementById('mx-viewport')?.clientWidth || 800;
+    const vpH = document.getElementById('mx-viewport')?.clientHeight || 600;
+
+    matrixState.activeHit = { term, hitIndex: hitIdx, skip: hit.skip };
+
+    // Cancel any existing animation
+    if (matrixState._spinRAF) cancelAnimationFrame(matrixState._spinRAF);
+
+    function spinFrame(now) {
+        const elapsed = now - startTime;
+        const t = Math.min(1, elapsed / duration);
+        // Ease out cubic: fast start, smooth deceleration
+        const ease = 1 - Math.pow(1 - t, 3);
+
+        // Interpolate grid width (round to integer)
+        const currentWidth = Math.round(startWidth + (targetWidth - startWidth) * ease);
+        matrixState.gridWidth = Math.max(1, currentWidth);
+
+        // Keep anchor position centered in viewport
+        const anchorCol = anchorPos % matrixState.gridWidth;
+        const anchorRow = Math.floor(anchorPos / matrixState.gridWidth);
+        const centerX = Math.floor(vpW / (2 * cs));
+        const centerY = Math.floor(vpH / (2 * cs));
+        matrixState.scrollX = Math.max(0, (anchorCol - centerX) * cs);
+        matrixState.scrollY = Math.max(0, (anchorRow - centerY) * cs);
+
+        // Update slider display
+        const slider = document.getElementById('mx-grid-width');
+        if (slider) slider.value = Math.min(300, matrixState.gridWidth);
+        const valEl = document.getElementById('mx-width-val');
+        if (valEl) valEl.textContent = matrixState.gridWidth;
+
+        matrixDraw();
+
+        if (t < 1) {
+            matrixState._spinRAF = requestAnimationFrame(spinFrame);
+        } else {
+            // Animation complete — final snap
+            matrixState._spinRAF = null;
+            matrixState.gridWidth = targetWidth;
+            matrixCenterOnPos(anchorPos, targetWidth);
+            matrixUpdateResultsPanel();
+            matrixDraw();
+            toast(`Grid aligned to ${term} (skip ${hit.skip})`);
+        }
+    }
+
+    matrixState._spinRAF = requestAnimationFrame(spinFrame);
+}
+
+// Center viewport on a position given the current gridWidth
+function matrixCenterOnPos(pos, gw) {
+    const cs = matrixState.cellSize;
+    const vpW = document.getElementById('mx-viewport')?.clientWidth || 800;
+    const vpH = document.getElementById('mx-viewport')?.clientHeight || 600;
+    const col = pos % gw;
+    const row = Math.floor(pos / gw);
+    const centerX = Math.floor(vpW / (2 * cs));
+    const centerY = Math.floor(vpH / (2 * cs));
+    matrixState.scrollX = Math.max(0, (col - centerX) * cs);
+    matrixState.scrollY = Math.max(0, (row - centerY) * cs);
+}
+
+function matrixSetWidth(val) {
+    matrixState.gridWidth = Math.max(1, parseInt(val) || 80);
+    document.getElementById('mx-width-val').textContent = matrixState.gridWidth;
+    matrixDraw();
+}
+
+function matrixSetCellSize(val) {
+    matrixState.cellSize = parseInt(val) || 11;
+    document.getElementById('mx-cell-val').textContent = matrixState.cellSize + 'px';
+    matrixDraw();
+}
+
+function matrixClearLast() {
+    if (matrixState.searches.length === 0) return;
+    matrixState.searches.pop();
+    matrixState.activeHit = null;
+    matrixRebuildPositionMap();
+    matrixUpdateResultsPanel();
+    matrixUpdateIntersectionPanel();
+    matrixUpdateStatsTerms();
+    matrixDraw();
+    toast('Removed last term');
+}
+
+function matrixClearAll() {
+    matrixState.searches = [];
+    matrixState.activeHit = null;
+    matrixState.positionMap = {};
+    matrixState.intersections = new Set();
+    matrixState.scrollX = 0;
+    matrixState.scrollY = 0;
+    matrixRebuildPositionMap();
+    matrixUpdateResultsPanel();
+    matrixUpdateIntersectionPanel();
+    matrixUpdateStatsTerms();
+    // Clear verse context
+    const vc = document.getElementById('mx-verse-content');
+    if (vc) vc.innerHTML = '<div class="empty-ctx">Click a hit to see verse context.</div>';
+    matrixDraw();
+    toast('Matrix cleared');
+}
+
+async function matrixLoadVerseContext(verseRef) {
+    const contentEl = document.getElementById('mx-verse-content');
+    if (!contentEl) return;
+
+    contentEl.innerHTML = '<div class="loading" style="padding:10px;"><div class="spinner"></div>Loading...</div>';
+
+    // Parse verse reference: handles multiple formats:
+    // "GEN 29:35", "GEN.29.35", "GEN 29", "Genesis 1:1"
+    try {
+        let book, chapter, verse;
+        const ref = verseRef.trim();
+
+        if (ref.includes('.')) {
+            // Dot format: GEN.29.35
+            const parts = ref.split('.');
+            book = parts[0];
+            chapter = parseInt(parts[1]);
+            verse = parts.length >= 3 ? parseInt(parts[2]) : 1;
+        } else {
+            // Space/colon format: "GEN 29:35" or "GEN 29"
+            const spaceIdx = ref.indexOf(' ');
+            if (spaceIdx < 0) throw new Error('Invalid ref: ' + ref);
+            book = ref.substring(0, spaceIdx).toUpperCase();
+            const rest = ref.substring(spaceIdx + 1);
+            if (rest.includes(':')) {
+                const [ch, vs] = rest.split(':');
+                chapter = parseInt(ch);
+                verse = parseInt(vs) || 1;
+            } else {
+                chapter = parseInt(rest);
+                verse = 1;
+            }
+        }
+
+        if (!book || isNaN(chapter)) throw new Error('Could not parse: ' + ref);
+
+        // Fetch a window: verse -2 to verse +3 for context
+        const startV = Math.max(1, verse - 2);
+        const endV = verse + 3;
+        const data = await api(`/api/scripture/${book}/${chapter}/${startV}-${endV}`);
+
+        const verses = data.verses || data;
+        if (!verses || (Array.isArray(verses) && verses.length === 0)) {
+            contentEl.innerHTML = `<div class="empty-ctx">No verses found for ${verseRef}</div>`;
+            return;
+        }
+
+        const verseArr = Array.isArray(verses) ? verses : [verses];
+        let html = `<h4>📖 ${book} ${chapter}:${startV}–${endV}</h4>`;
+        for (const v of verseArr) {
+            const vNum = v.verse || v.verse_number;
+            const vText = v.text || v.content || '';
+            const isTarget = vNum === verse;
+            html += `<div class="verse" style="${isTarget ? 'background:var(--teal-glow); padding:2px 6px; border-radius:4px; border-left:3px solid var(--teal);' : ''}">`;
+            html += `<span class="vnum">${vNum}</span>${vText}</div>`;
+        }
+        html += `<div style="margin-top:10px; font-size:11px; color:var(--text-muted);">ELS hit starts at <strong style="color:var(--teal);">${verseRef}</strong></div>`;
+        contentEl.innerHTML = html;
+    } catch (err) {
+        contentEl.innerHTML = `<div class="empty-ctx">Failed to load verse: ${err.message}</div>`;
+    }
+}
+
+function matrixDraw() {
+    const canvas = document.getElementById('mx-canvas');
+    const viewport = document.getElementById('mx-viewport');
+    if (!canvas || !viewport) return;
+
+    const ctx = canvas.getContext('2d');
+    const cs = matrixState.cellSize;
+    const gw = matrixState.gridWidth;
+    const vpW = viewport.clientWidth;
+    const vpH = viewport.clientHeight - 36; // minus info bar
+
+    canvas.width = vpW;
+    canvas.height = vpH;
+    canvas.style.cursor = 'crosshair';
+
+    // Background
+    ctx.fillStyle = BG_COLOR;
+    ctx.fillRect(0, 0, vpW, vpH);
+
+    if (!matrixState.streamData) {
+        matrixDrawEmpty(canvas, ctx, viewport);
+        return;
+    }
+
+    const streamLen = matrixState.streamData.total_letters || matrixState.streamData.length || 0;
+    if (streamLen === 0) return;
+
+    const sx = matrixState.scrollX || 0;
+    const sy = matrixState.scrollY;
+    const startCol = Math.floor(sx / cs);
+    const startRow = Math.floor(sy / cs);
+    const visibleCols = Math.floor(vpW / cs) + 2;
+    const visibleRows = Math.floor(vpH / cs) + 2;
+
+    // Intersection pulse (0..1 oscillation for glow)
+    const pulse = (Math.sin(Date.now() / 400) + 1) / 2; // 0..1
+
+    // LOD rendering: actual letters at cellSize >= 10px, dots/rects when smaller
+    const hasLetters = !!matrixState.streamLetters;
+    const showLetters = hasLetters && cs >= 10;
+    const fontSize = Math.max(6, cs - 3);
+    ctx.font = `bold ${fontSize}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (let vr = 0; vr < visibleRows; vr++) {
+        const absRow = startRow + vr;
+        const y = vr * cs - (sy % cs);
+
+        for (let vc = 0; vc < visibleCols; vc++) {
+            const absCol = startCol + vc;
+            if (absCol >= gw) continue;
+            const pos = absRow * gw + absCol;
+            if (pos < 0 || pos >= streamLen) continue;
+
+            const x = vc * cs - (sx % cs);
+            const entries = matrixState.positionMap[pos];
+            const letter = showLetters ? matrixState.streamLetters[pos] : null;
+
+            if (entries && entries.length > 0) {
+                // This position is part of an ELS sequence
+                const isIntersection = matrixState.intersections.has(pos);
+
+                if (isIntersection) {
+                    // Pulsing intersection glow
+                    const glowAlpha = 0.15 + pulse * 0.2;
+                    const ringAlpha = 0.5 + pulse * 0.5;
+                    ctx.fillStyle = `rgba(255,255,255,${glowAlpha})`;
+                    ctx.fillRect(x, y, cs - 1, cs - 1);
+
+                    // Glow ring
+                    ctx.strokeStyle = `rgba(255,200,60,${ringAlpha})`;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x + 1, y + 1, cs - 3, cs - 3);
+
+                    // Diamond marker at small sizes
+                    if (cs >= 12) {
+                        ctx.fillStyle = `rgba(255,200,60,${0.3 + pulse * 0.3})`;
+                        const cx = x + cs / 2, cy = y + cs / 2, r = cs * 0.4;
+                        ctx.beginPath();
+                        ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r, cy);
+                        ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r, cy);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+
+                    ctx.fillStyle = INTERSECTION_COLOR;
+                    ctx.shadowColor = '#ffc83c';
+                    ctx.shadowBlur = 6 + pulse * 6;
+                } else {
+                    const color = entries[0].color;
+                    ctx.fillStyle = color + '22';
+                    ctx.fillRect(x, y, cs - 1, cs - 1);
+                    ctx.fillStyle = color;
+                    ctx.shadowColor = color;
+                    ctx.shadowBlur = 2;
+                }
+
+                if (showLetters && letter) {
+                    ctx.fillText(letter, x + cs / 2, y + cs / 2);
+                } else if (cs >= 8) {
+                    ctx.fillText('●', x + cs / 2, y + cs / 2);
+                } else {
+                    ctx.fillRect(x + 1, y + 1, cs - 3, cs - 3);
+                }
+                ctx.shadowBlur = 0;
+            } else {
+                // Normal (non-hit) position
+                if (showLetters && letter) {
+                    ctx.fillStyle = BG_LETTER_COLOR;
+                    ctx.fillText(letter, x + cs / 2, y + cs / 2);
+                } else if (cs >= 10) {
+                    ctx.fillStyle = BG_LETTER_COLOR;
+                    ctx.fillText('·', x + cs / 2, y + cs / 2);
+                }
+            }
+        }
+    }
+
+    // --- CONSTELLATION LINES: draw glowing paths for non-aligned terms ---
+    const activeSkip = matrixState.activeHit ? matrixState.activeHit.skip : gw;
+    for (const search of matrixState.searches) {
+        // Only draw constellation lines for terms whose skip ≠ gridWidth
+        // (i.e., the term that isn't vertically aligned)
+        for (const hit of search.hits) {
+            const skip = hit.skip || 0;
+            // Skip drawing lines for the aligned term (skip == gridWidth, or skip±1)
+            if (skip === gw || skip === gw + 1 || skip === gw - 1) continue;
+            // Skip if < 2 positions or skip 1 (literal text)
+            const positions = hit.positions || [];
+            if (positions.length < 2 || skip < 2) continue;
+
+            // Convert positions to pixel coords
+            const coords = [];
+            for (const pos of positions) {
+                const pCol = pos % gw;
+                const pRow = Math.floor(pos / gw);
+                const px = (pCol - startCol) * cs - (sx % cs) + cs / 2;
+                const py = (pRow - startRow) * cs - (sy % cs) + cs / 2;
+                coords.push({ px, py, pos });
+            }
+
+            // Only draw if at least some coords are in/near viewport
+            const anyVisible = coords.some(c => c.px > -cs * 5 && c.px < vpW + cs * 5 && c.py > -cs * 5 && c.py < vpH + cs * 5);
+            if (!anyVisible) continue;
+
+            // Draw the constellation line
+            ctx.save();
+            ctx.strokeStyle = search.color;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.5;
+            ctx.shadowColor = search.color;
+            ctx.shadowBlur = 8;
+            ctx.setLineDash([6, 4]);
+
+            ctx.beginPath();
+            ctx.moveTo(coords[0].px, coords[0].py);
+            for (let i = 1; i < coords.length; i++) {
+                ctx.lineTo(coords[i].px, coords[i].py);
+            }
+            ctx.stroke();
+
+            // Draw small circles at each letter position
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 0.8;
+            ctx.fillStyle = search.color;
+            ctx.shadowBlur = 4;
+            for (const c of coords) {
+                ctx.beginPath();
+                ctx.arc(c.px, c.py, Math.max(3, cs * 0.25), 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+    }
+
+    // Draw grid lines (subtle)
+    if (cs >= 8) {
+        ctx.strokeStyle = 'rgba(51,56,73,0.3)';
+        ctx.lineWidth = 0.5;
+        for (let vc = 0; vc <= visibleCols; vc++) {
+            const x = vc * cs - (sx % cs);
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, vpH);
+            ctx.stroke();
+        }
+    }
+
+    // Hover highlight
+    if (matrixState.hoverPos >= 0) {
+        const hCol = matrixState.hoverPos % gw;
+        const hRow = Math.floor(matrixState.hoverPos / gw);
+        const hx = (hCol - startCol) * cs - (sx % cs);
+        const hy = (hRow - startRow) * cs - (sy % cs);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(hx, hy, cs - 1, cs - 1);
+    }
+
+    // Vertical scrollbar indicator
+    const totalRows = Math.ceil(streamLen / gw);
+    const scrollFraction = sy / (totalRows * cs);
+    const handleHeight = Math.max(20, (visibleRows / totalRows) * vpH);
+    ctx.fillStyle = 'rgba(0,212,170,0.3)';
+    ctx.fillRect(vpW - 6, scrollFraction * (vpH - handleHeight), 4, handleHeight);
+
+    // Horizontal scrollbar indicator (if scrolled)
+    if (sx > 0 || gw * cs > vpW) {
+        const totalW = gw * cs;
+        const hFrac = sx / totalW;
+        const hHandleW = Math.max(20, (vpW / totalW) * vpW);
+        ctx.fillStyle = 'rgba(0,212,170,0.2)';
+        ctx.fillRect(hFrac * (vpW - hHandleW), vpH - 6, hHandleW, 4);
+    }
+
+    // Schedule next frame for intersection pulse animation
+    if (matrixState.intersections.size > 0) {
+        if (!matrixState._pulseRAF) {
+            matrixState._pulseRAF = requestAnimationFrame(function pulseTick() {
+                matrixState._pulseRAF = null;
+                if (matrixState.intersections.size > 0 && document.getElementById('mx-canvas')) {
+                    matrixDraw();
+                }
+            });
+        }
+    }
+}
+
+function matrixHover(pos, col, row) {
+    const streamLen = matrixState.streamData ? (matrixState.streamData.total_letters || 0) : 0;
+    const tooltip = document.getElementById('mx-tooltip');
+    if (pos < 0 || pos >= streamLen) {
+        document.getElementById('mx-hover-info').textContent = '';
+        if (tooltip) tooltip.style.display = 'none';
+        return;
+    }
+
+    matrixState.hoverPos = pos;
+    const entries = matrixState.positionMap[pos];
+    const isIntersection = matrixState.intersections.has(pos);
+
+    // Resolve verse for this position
+    const verseRef = matrixPosToVerse(pos);
+
+    // Info bar
+    let info = `Pos ${pos.toLocaleString()}`;
+    const letter = matrixState.streamLetters ? matrixState.streamLetters[pos] : null;
+    if (letter) info = `[${letter}] ` + info;
+    if (verseRef) info += ` · ${verseRef}`;
+    if (entries && entries.length > 0) {
+        const terms = entries.map(e => e.term).join(' × ');
+        info += ` | ${terms} (skip ${entries[0].skip})`;
+        if (isIntersection) info += ' ⚡ INTERSECTION';
+    }
+    document.getElementById('mx-hover-info').textContent = info;
+    document.getElementById('mx-pos-info').textContent = `Row ${Math.floor(pos / matrixState.gridWidth).toLocaleString()} · Col ${col}`;
+
+    // Tooltip with ±20 char context window
+    if (tooltip && matrixState.streamLetters && entries && entries.length > 0) {
+        const letters = matrixState.streamLetters;
+        const windowSize = 20;
+        const start = Math.max(0, pos - windowSize);
+        const end = Math.min(letters.length, pos + windowSize + 1);
+
+        // Build set of all highlighted positions in this window
+        const hitPositions = new Set();
+        const intersectionPositions = new Set();
+        for (let p = start; p < end; p++) {
+            if (matrixState.intersections.has(p)) intersectionPositions.add(p);
+            else if (matrixState.positionMap[p]) hitPositions.add(p);
+        }
+
+        // Build the letter preview HTML
+        let letterHtml = '';
+        for (let p = start; p < end; p++) {
+            const ch = letters[p] || '?';
+            if (p === pos) {
+                letterHtml += `<span class="tt-hit" style="font-size:15px; text-decoration:underline;">${ch}</span>`;
+            } else if (intersectionPositions.has(p)) {
+                letterHtml += `<span class="tt-intersection">${ch}</span>`;
+            } else if (hitPositions.has(p)) {
+                letterHtml += `<span class="tt-hit">${ch}</span>`;
+            } else {
+                letterHtml += ch;
+            }
+        }
+
+        // Meta line: term info + verse + skip hint
+        const entry = entries[0];
+        let metaHtml = `<div class="tt-meta">${entries.map(e => `<span style="color:${e.color};">${e.term}</span>`).join(' × ')} — skip ${entry.skip}`;
+        if (verseRef) metaHtml += ` · <span style="color:var(--teal);">${verseRef}</span>`;
+        metaHtml += `</div>`;
+        if (entry.skip > windowSize * 2) {
+            metaHtml += `<div class="tt-skip-hint">← next ELS letter ${entry.skip} chars away (beyond this window)</div>`;
+        }
+
+        tooltip.innerHTML = `<div class="tt-letters">…${letterHtml}…</div>${metaHtml}`;
+        tooltip.style.display = 'block';
+
+        // Position tooltip near cursor but within viewport
+        const viewport = document.getElementById('mx-viewport');
+        const vRect = viewport.getBoundingClientRect();
+        const sx2 = matrixState.scrollX || 0;
+        const cx = col * matrixState.cellSize - sx2;
+        const cy = (row - Math.floor(matrixState.scrollY / matrixState.cellSize)) * matrixState.cellSize - (matrixState.scrollY % matrixState.cellSize);
+        let tx = cx + matrixState.cellSize + 10;
+        let ty = cy - 10;
+        // Clamp to viewport
+        if (tx + 450 > vRect.width) tx = cx - 460;
+        if (tx < 0) tx = 10;
+        if (ty < 0) ty = 10;
+        if (ty + 80 > vRect.height) ty = vRect.height - 90;
+        tooltip.style.left = tx + 'px';
+        tooltip.style.top = ty + 'px';
+    } else if (tooltip && verseRef && letter) {
+        // Show a lightweight tooltip for non-hit positions with just the verse
+        tooltip.innerHTML = `<div class="tt-meta" style="margin:0;"><span style="color:var(--text-primary); font-size:14px; font-weight:bold;">[${letter}]</span> ${verseRef}</div>`;
+        tooltip.style.display = 'block';
+        const viewport = document.getElementById('mx-viewport');
+        const sx2 = matrixState.scrollX || 0;
+        const cx = col * matrixState.cellSize - sx2;
+        const cy = (row - Math.floor(matrixState.scrollY / matrixState.cellSize)) * matrixState.cellSize - (matrixState.scrollY % matrixState.cellSize);
+        tooltip.style.left = (cx + matrixState.cellSize + 10) + 'px';
+        tooltip.style.top = (cy - 5) + 'px';
+    } else if (tooltip) {
+        tooltip.style.display = 'none';
+    }
+
+    // Redraw to show hover highlight
+    matrixDraw();
+}
+
+// ---------------------------------------------------------------------------
+// ELS Matrix — Load from History
+// ---------------------------------------------------------------------------
+
+async function matrixLoadHistory() {
+    const listEl = document.getElementById('mx-history-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = '<div class="loading" style="padding:10px;"><div class="spinner"></div>Loading...</div>';
+
+    try {
+        const searches = await api('/api/els/searches?limit=30');
+        const items = Array.isArray(searches) ? searches : (searches.searches || []);
+
+        if (items.length === 0) {
+            listEl.innerHTML = '<div style="font-size:12px; color:var(--text-muted); padding:8px;">No past searches found. Run searches via Claude or the Search panel above.</div>';
+            return;
+        }
+
+        // Group by term for cleaner display, show most recent per term
+        const byTerm = {};
+        for (const s of items) {
+            const key = `${s.term}|${s.stream_id}`;
+            if (!byTerm[key] || s.created_at > byTerm[key].created_at) byTerm[key] = s;
+        }
+
+        listEl.innerHTML = Object.values(byTerm).map(s => {
+            const alreadyLoaded = matrixState.searches.some(ms => ms.term === s.term);
+            return `<div class="hit-item" style="${alreadyLoaded ? 'opacity:0.5;' : ''}" onclick="matrixImportSearch('${s.search_id}')">
+                <span style="font-weight:600; color:var(--teal);">${s.term}</span>
+                <span style="font-size:11px; color:var(--text-muted);">${s.stream_id} · ${s.hit_count} hits</span>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        listEl.innerHTML = '<div style="font-size:12px; color:var(--red); padding:8px;">Failed to load history</div>';
+    }
+}
+
+async function matrixImportSearch(searchId) {
+    try {
+        const detail = await api(`/api/els/searches/${searchId}`);
+        if (!detail || !detail.hits) { toast('Search data not found', 'error'); return; }
+
+        const term = detail.term;
+        const streamId = detail.stream_id;
+
+        // Normalize hit field names (DB uses skip_interval/start_position, UI uses skip/start_pos)
+        detail.hits = detail.hits.map(h => ({
+            skip: h.skip || h.skip_interval,
+            direction: h.direction,
+            positions: h.positions || [],
+            start_pos: h.start_pos || h.start_position,
+            start_verse: h.start_verse,
+            mid_verse: h.mid_verse,
+            end_verse: h.end_verse
+        }));
+
+        // Switch stream if needed
+        if (streamId !== matrixState.streamId) {
+            matrixState.searches = [];
+            matrixState.streamId = streamId;
+            const streamSelect = document.getElementById('mx-stream');
+            if (streamSelect) streamSelect.value = streamId;
+            await matrixLoadStream(streamId);
+        } else if (!matrixState.streamData) {
+            await matrixLoadStream(streamId);
+        }
+
+        // Assign color
+        const colorIdx = matrixState.searches.length % TERM_COLORS.length;
+
+        // Replace or add
+        const existing = matrixState.searches.findIndex(s => s.term === term);
+        const entry = { term, hits: detail.hits || [], color: existing >= 0 ? matrixState.searches[existing].color : TERM_COLORS[colorIdx], searchId };
+        if (existing >= 0) {
+            matrixState.searches[existing] = entry;
+        } else {
+            matrixState.searches.push(entry);
+        }
+
+        // Auto-set grid width on first import (if meaningful skip)
+        if (matrixState.searches.length === 1 && entry.hits.length > 0) {
+            const firstSkip = entry.hits[0].skip || 80;
+            matrixState.gridWidth = firstSkip >= 20 ? firstSkip : 80;
+            const slider = document.getElementById('mx-grid-width');
+            if (slider) slider.value = Math.min(300, matrixState.gridWidth);
+        }
+
+        matrixRebuildPositionMap();
+        matrixUpdateResultsPanel();
+        matrixUpdateIntersectionPanel();
+        matrixUpdateStatsTerms();
+        matrixDraw();
+
+        toast(`Loaded ${entry.hits.length} hits for "${term}" from history`);
+
+        // Refresh the history list to show loaded state
+        matrixLoadHistory();
+    } catch (err) {
+        toast('Failed to import search: ' + err.message, 'error');
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ELS Matrix — Statistics Panel
+// ---------------------------------------------------------------------------
+
+function matrixUpdateStatsTerms() {
+    const select = document.getElementById('mx-stats-term');
+    if (!select) return;
+
+    const current = select.value;
+    select.innerHTML = '<option value="">Select a term...</option>';
+    for (const s of matrixState.searches) {
+        select.innerHTML += `<option value="${s.term}" ${s.term === current ? 'selected' : ''}>${s.term} (${s.hits.length} hits)</option>`;
+    }
+}
+
+async function matrixRunStats(action) {
+    const term = document.getElementById('mx-stats-term').value;
+    if (!term) { toast('Select a term first', 'error'); return; }
+
+    const search = matrixState.searches.find(s => s.term === term);
+    if (!search) { toast('Term not loaded in matrix', 'error'); return; }
+
+    const resultsEl = document.getElementById('mx-stats-results');
+    const mcOptions = document.getElementById('mx-mc-options');
+
+    // Show Monte Carlo options when MC button is clicked
+    if (action === 'monte_carlo') {
+        mcOptions.style.display = 'block';
+    }
+
+    resultsEl.innerHTML = `<div class="loading" style="padding:10px;"><div class="spinner"></div>${action === 'monte_carlo' ? 'Running Monte Carlo simulation...' : 'Calculating...'}</div>`;
+
+    try {
+        const body = {
+            term,
+            stream: matrixState.streamId,
+            observed: search.hits.length,
+            action,
+            skip_min: 1,
+            skip_max: 2000,
+            direction: 'both',
+            search_id: search.searchId || null
+        };
+
+        if (action === 'monte_carlo') {
+            body.mc_runs = parseInt(document.getElementById('mx-mc-runs').value) || 100;
+        }
+
+        const result = await api('/api/els/stats', { method: 'POST', body });
+
+        // Format results
+        let html = '';
+
+        if (result.expected !== undefined || result.expected_hits !== undefined) {
+            const expected = result.expected || result.expected_hits || 0;
+            const ratio = result.ratio || (expected > 0 ? (search.hits.length / expected).toFixed(3) : 'N/A');
+            html += `<div class="matrix-stat" style="margin-bottom:6px;"><div class="val">${expected.toFixed(1)}</div><div class="lbl">Expected Hits</div></div>`;
+            html += `<div class="matrix-stat" style="margin-bottom:6px;"><div class="val" style="color:${parseFloat(ratio) > 1.5 ? 'var(--amber)' : parseFloat(ratio) < 0.5 ? 'var(--blue)' : 'var(--teal)'}">${ratio}×</div><div class="lbl">Obs/Expected</div></div>`;
+        }
+
+        if (result.poisson_p !== undefined) {
+            const p = result.poisson_p;
+            const sigColor = p < 0.01 ? 'var(--red)' : p < 0.05 ? 'var(--amber)' : 'var(--green)';
+            const sigLabel = p < 0.01 ? 'HIGHLY SIGNIFICANT' : p < 0.05 ? 'SIGNIFICANT' : 'Not significant';
+            html += `<div class="matrix-stat" style="margin-bottom:6px;"><div class="val" style="color:${sigColor}">${p < 0.001 ? p.toExponential(2) : p.toFixed(4)}</div><div class="lbl">Poisson p-value</div></div>`;
+            html += `<div style="text-align:center; padding:4px; font-size:11px; font-weight:600; color:${sigColor};">${sigLabel}</div>`;
+        }
+
+        if (result.monte_carlo) {
+            const mc = result.monte_carlo;
+            const mcColor = mc.p_value < 0.01 ? 'var(--red)' : mc.p_value < 0.05 ? 'var(--amber)' : 'var(--green)';
+            html += `<div style="border-top:1px solid var(--border); margin-top:8px; padding-top:8px;">`;
+            html += `<div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Monte Carlo (${mc.runs} runs)</div>`;
+            html += `<div class="matrix-stat" style="margin-bottom:6px;"><div class="val" style="color:${mcColor}">${mc.p_value < 0.001 ? '<0.001' : mc.p_value.toFixed(3)}</div><div class="lbl">MC p-value</div></div>`;
+            html += `<div style="font-size:11px; color:var(--text-secondary); text-align:center;">${mc.exceeded}/${mc.runs} shuffled texts had ≥${search.hits.length} hits</div>`;
+            if (mc.mean_hits !== undefined) html += `<div style="font-size:11px; color:var(--text-muted); text-align:center; margin-top:2px;">Shuffled mean: ${mc.mean_hits.toFixed(1)} hits</div>`;
+            html += `</div>`;
+        }
+
+        resultsEl.innerHTML = html || '<div style="font-size:12px; color:var(--text-muted);">No results</div>';
+    } catch (err) {
+        resultsEl.innerHTML = `<div style="font-size:12px; color:var(--red);">Error: ${err.message}</div>`;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard Page
+// ---------------------------------------------------------------------------
+
+async function renderDashboard(el) {
+    el.innerHTML = '<div class="loading"><div class="spinner"></div>Loading dashboard...</div>';
+
+    try {
+        state.stats = await api('/api/stats');
+        state.proposals = await api('/api/proposals');
+    } catch { return; }
+
+    const s = state.stats;
+    const typeBreakdown = (s.nodes_by_type || []).map(t =>
+        `<div class="stat-card"><div class="value">${t.count}</div><div class="label">${t.type}</div></div>`
+    ).join('');
+
+    let proposalHTML = '';
+    if (state.proposals.length > 0) {
+        proposalHTML = state.proposals.map(p => `
+            <div class="proposal-banner">
+                <div class="proposal-info">
+                    <div class="proposal-type">${p.icon || '📝'} New type proposed: ${p.display_name}</div>
+                    <div class="proposal-desc">${p.description}</div>
+                </div>
+                <div class="proposal-actions">
+                    <button class="btn btn-primary btn-sm" onclick="approveProposal('${p.id}')">Approve</button>
+                    <button class="btn btn-danger btn-sm" onclick="rejectProposal('${p.id}')">Reject</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    el.innerHTML = `
+        <div class="page-header">
+            <h2>Dashboard</h2>
+            <button class="btn btn-primary" onclick="navigateTo('browse')">Browse All</button>
+        </div>
+
+        ${proposalHTML}
+
+        <div class="card-grid">
+            <div class="stat-card">
+                <div class="value">${s.total_nodes}</div>
+                <div class="label">Total Nodes</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">${s.total_edges}</div>
+                <div class="label">Connections</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">${s.embedding_coverage}</div>
+                <div class="label">Embedded</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">${s.db_size}</div>
+                <div class="label">DB Size</div>
+            </div>
+        </div>
+
+        ${typeBreakdown ? `
+            <h3 style="margin-bottom:12px; font-size:16px; color:var(--text-secondary);">Nodes by Type</h3>
+            <div class="card-grid">${typeBreakdown}</div>
+        ` : ''}
+
+        <h3 style="margin-bottom:12px; font-size:16px; color:var(--text-secondary);">Recent Activity</h3>
+        <div id="recent-nodes"></div>
+    `;
+
+    // Load recent nodes
+    try {
+        const recent = await api('/api/nodes?limit=10&sort=updated&order=desc');
+        document.getElementById('recent-nodes').innerHTML = recent.length > 0
+            ? recent.map(n => renderNodeCard(n)).join('')
+            : '<div class="empty-state"><div class="icon">🌱</div><h3>Empty graph</h3><p>Start chatting with Claude and use the <code>remember</code> tool to store your first memory.</p></div>';
+    } catch {}
+}
+
+// ---------------------------------------------------------------------------
+// Browse Page
+// ---------------------------------------------------------------------------
+
+async function renderBrowse(el) {
+    el.innerHTML = `
+        <div class="page-header">
+            <h2>Browse</h2>
+        </div>
+
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="Search your knowledge graph..."
+                   value="${state.searchQuery}" onkeydown="if(event.key==='Enter')doSearch()">
+            <button class="btn btn-primary" onclick="doSearch()">Search</button>
+            <button class="btn" onclick="doSearch('keyword')">Keyword</button>
+        </div>
+
+        <div class="filters" id="type-filters"></div>
+        <div id="browse-results"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+    `;
+
+    // Load types for filter chips
+    try {
+        state.types = await api('/api/types');
+        const filtersEl = document.getElementById('type-filters');
+        filtersEl.innerHTML = `
+            <div class="filter-chip ${!state.filterType ? 'active' : ''}" onclick="setTypeFilter(null)">All</div>
+            ${state.types.map(t => `
+                <div class="filter-chip ${state.filterType === t.type_name ? 'active' : ''}"
+                     onclick="setTypeFilter('${t.type_name}')">${t.icon} ${t.display_name}</div>
+            `).join('')}
+        `;
+    } catch {}
+
+    // Load nodes
+    await loadBrowseResults();
+}
+
+async function loadBrowseResults() {
+    const resultsEl = document.getElementById('browse-results');
+    if (!resultsEl) return;
+
+    let url = '/api/nodes?limit=50&sort=updated&order=desc';
+    if (state.filterType) url += `&type=${state.filterType}`;
+
+    try {
+        const nodes = await api(url);
+        resultsEl.innerHTML = nodes.length > 0
+            ? nodes.map(n => renderNodeCard(n)).join('')
+            : '<div class="empty-state"><div class="icon">📭</div><h3>No nodes found</h3></div>';
+    } catch {}
+}
+
+async function doSearch(mode) {
+    const input = document.getElementById('search-input');
+    state.searchQuery = input ? input.value.trim() : '';
+    if (!state.searchQuery) { await loadBrowseResults(); return; }
+
+    const resultsEl = document.getElementById('browse-results');
+    if (!resultsEl) return;
+    resultsEl.innerHTML = '<div class="loading"><div class="spinner"></div>Searching...</div>';
+
+    try {
+        let url = `/api/search?q=${encodeURIComponent(state.searchQuery)}&limit=20`;
+        if (mode === 'keyword') url += '&mode=keyword';
+        if (state.filterType) url += `&type=${state.filterType}`;
+
+        const data = await api(url);
+        const results = data.results || data;
+        resultsEl.innerHTML = results.length > 0
+            ? results.map(n => renderNodeCard(n)).join('')
+            : '<div class="empty-state"><div class="icon">🔍</div><h3>No results</h3><p>Try different search terms</p></div>';
+    } catch {}
+}
+
+function setTypeFilter(type) {
+    state.filterType = type;
+    renderPage();
+}
+
+// ---------------------------------------------------------------------------
+// Scripture Reader
+// ---------------------------------------------------------------------------
+
+const scriptureState = { books: [], testament: 'all', book: null, chapter: null, searchQuery: '' };
+
+async function renderScripture(el) {
+    // Load books once
+    if (scriptureState.books.length === 0) {
+        try {
+            scriptureState.books = await api('/api/scripture/books');
+        } catch { scriptureState.books = []; }
+    }
+
+    const books = scriptureState.testament === 'all'
+        ? scriptureState.books
+        : scriptureState.books.filter(b => b.testament === scriptureState.testament);
+
+    const activeBook = scriptureState.book
+        ? scriptureState.books.find(b => b.abbrev === scriptureState.book)
+        : null;
+
+    el.innerHTML = `
+        <div class="page-header">
+            <h2>📖 Scripture</h2>
+            <div style="color:var(--text-muted); font-size:13px;">KJV · 31,102 verses · 66 books</div>
+        </div>
+
+        <div class="scripture-search">
+            <input type="text" id="scripture-search-input" placeholder="Search by meaning — e.g. 'hope in suffering', 'God's promises'..."
+                   value="${scriptureState.searchQuery}" />
+            <button class="btn" onclick="doScriptureSearch()">Search</button>
+            <button class="btn" id="scripture-clear-btn" style="display:none; background:var(--bg-tertiary);" onclick="clearScriptureSearch()">Clear</button>
+        </div>
+        <div id="scripture-search-results"></div>
+
+        <div class="scripture-layout">
+            <div class="book-panel">
+                <div class="testament-tabs">
+                    <div class="testament-tab ${scriptureState.testament === 'all' ? 'active' : ''}" onclick="setTestament('all')">All</div>
+                    <div class="testament-tab ${scriptureState.testament === 'OT' ? 'active' : ''}" onclick="setTestament('OT')">Old Testament</div>
+                    <div class="testament-tab ${scriptureState.testament === 'NT' ? 'active' : ''}" onclick="setTestament('NT')">New Testament</div>
+                </div>
+                <div class="book-grid">
+                    ${books.map(b => `
+                        <div class="book-btn ${scriptureState.book === b.abbrev ? 'active' : ''}"
+                             onclick="selectBook('${b.abbrev}')" title="${b.name} (${b.chapter_count} ch)">
+                            ${b.name}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div class="reading-panel">
+                ${activeBook ? `
+                    <div class="chapter-nav">
+                        ${Array.from({length: activeBook.chapter_count}, (_, i) => i + 1).map(ch => `
+                            <div class="ch-btn ${scriptureState.chapter === ch ? 'active' : ''}"
+                                 onclick="selectChapter(${ch})">${ch}</div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                <div class="verse-container" id="verse-display">
+                    ${!activeBook
+                        ? '<div class="empty">Select a book to begin reading</div>'
+                        : !scriptureState.chapter
+                            ? '<div class="empty">Select a chapter</div>'
+                            : '<div class="loading"><div class="spinner"></div>Loading...</div>'
+                    }
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Bind enter key on search
+    document.getElementById('scripture-search-input')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') doScriptureSearch();
+    });
+
+    // Auto-load chapter if set
+    if (activeBook && scriptureState.chapter) {
+        await loadChapter(activeBook.abbrev, scriptureState.chapter);
+    }
+}
+
+function setTestament(t) {
+    scriptureState.testament = t;
+    renderPage();
+}
+
+function selectBook(abbrev) {
+    scriptureState.book = abbrev;
+    scriptureState.chapter = null;
+    renderPage();
+}
+
+function selectChapter(ch) {
+    scriptureState.chapter = ch;
+    renderPage();
+}
+
+async function loadChapter(bookAbbrev, chapter) {
+    const display = document.getElementById('verse-display');
+    if (!display) return;
+
+    try {
+        const data = await api(`/api/scripture/${bookAbbrev}/${chapter}`);
+        const bookName = data.book?.name || bookAbbrev;
+
+        display.innerHTML = `
+            <h3>${bookName} ${chapter}</h3>
+            <div style="display:flex; gap:8px; margin-bottom:16px;">
+                ${chapter > 1 ? `<button class="btn btn-sm" onclick="selectChapter(${chapter - 1})">◀ Ch ${chapter - 1}</button>` : ''}
+                ${data.book && chapter < data.book.chapter_count ? `<button class="btn btn-sm" onclick="selectChapter(${chapter + 1})">Ch ${chapter + 1} ▶</button>` : ''}
+            </div>
+            ${data.verses.map(v => `
+                <span class="verse"><span class="vnum">${v.verse}</span>${v.text} </span>
+            `).join('')}
+        `;
+    } catch (err) {
+        display.innerHTML = `<div class="empty">Error loading chapter: ${err.message}</div>`;
+    }
+}
+
+async function doScriptureSearch() {
+    const input = document.getElementById('scripture-search-input');
+    const resultsDiv = document.getElementById('scripture-search-results');
+    if (!input || !resultsDiv) return;
+
+    const query = input.value.trim();
+    scriptureState.searchQuery = query;
+    if (!query) { resultsDiv.innerHTML = ''; return; }
+
+    resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Searching 15,857 passages...</div>';
+
+    try {
+        const data = await api(`/api/scripture/search?q=${encodeURIComponent(query)}&limit=8`);
+        const results = data.results || data;
+
+        if (results.length === 0) {
+            resultsDiv.innerHTML = '<div style="color:var(--text-muted); padding:12px;">No passages found. Try different words.</div>';
+            return;
+        }
+
+        const clearBtn = document.getElementById('scripture-clear-btn');
+        if (clearBtn) clearBtn.style.display = 'inline-block';
+
+        resultsDiv.innerHTML = `
+            <div class="search-results">
+                ${results.map(r => {
+                    const text = r.text || '';
+                    const preview = text.length > 200 ? text.substring(0, 200) + '...' : text;
+                    const score = r.similarity ? `${Math.round(r.similarity * 100)}%` : '';
+                    return `
+                        <div class="search-result" onclick="jumpToResult('${r.book_abbrev}', ${r.chapter || r.verse_start}, ${r.verse_start || 0})">
+                            ${score ? `<span class="score">${score} match</span>` : ''}
+                            <div class="ref">${r.reference}</div>
+                            <div class="preview">${preview}</div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    } catch (err) {
+        resultsDiv.innerHTML = `<div style="color:var(--red); padding:12px;">Search error: ${err.message}</div>`;
+    }
+}
+
+function jumpToResult(bookAbbrev, chapter, verse) {
+    scriptureState.book = bookAbbrev;
+    scriptureState.chapter = chapter;
+    scriptureState.searchQuery = '';
+    renderPage();
+}
+
+function clearScriptureSearch() {
+    scriptureState.searchQuery = '';
+    const input = document.getElementById('scripture-search-input');
+    const results = document.getElementById('scripture-search-results');
+    const clearBtn = document.getElementById('scripture-clear-btn');
+    if (input) input.value = '';
+    if (results) results.innerHTML = '';
+    if (clearBtn) clearBtn.style.display = 'none';
+}
+
+// ---------------------------------------------------------------------------
+// Graph View
+// ---------------------------------------------------------------------------
+
+async function renderGraph(el) {
+    el.innerHTML = `
+        <div class="page-header">
+            <h2>Graph View</h2>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-sm" onclick="resetGraphZoom()">Reset Zoom</button>
+            </div>
+        </div>
+        <div id="graph-container">
+            <svg id="graph-svg"></svg>
+        </div>
+    `;
+
+    try {
+        state.graphData = await api('/api/graph');
+        renderD3Graph(state.graphData);
+    } catch {}
+}
+
+function renderD3Graph(data) {
+    const svg = d3.select('#graph-svg');
+    const container = document.getElementById('graph-container');
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    svg.selectAll('*').remove();
+    svg.attr('viewBox', [0, 0, width, height]);
+
+    if (!data.nodes || data.nodes.length === 0) {
+        svg.append('text')
+            .attr('x', width / 2).attr('y', height / 2)
+            .attr('text-anchor', 'middle')
+            .attr('fill', '#6b7394')
+            .text('No nodes to display. Use Claude to remember something first.');
+        return;
+    }
+
+    // Color scale by type
+    const typeColors = {
+        memory: '#00d4aa', todo: '#ffb547', decision: '#5c9eff',
+        insight: '#b47cff', dev_session: '#ff5c6c', changelog: '#4cdf8b'
+    };
+    const getColor = (type) => typeColors[type] || '#6b7394';
+
+    // Build link references
+    const nodeMap = new Map(data.nodes.map(n => [n.id, n]));
+    const links = data.edges.filter(e => nodeMap.has(e.source_id) && nodeMap.has(e.target_id))
+        .map(e => ({ source: e.source_id, target: e.target_id, relationship: e.relationship, id: e.id }));
+
+    const g = svg.append('g');
+
+    // Zoom
+    const zoom = d3.zoom().scaleExtent([0.1, 4]).on('zoom', (event) => {
+        g.attr('transform', event.transform);
+    });
+    svg.call(zoom);
+    window._graphZoom = zoom;
+    window._graphSvg = svg;
+
+    // Simulation
+    const simulation = d3.forceSimulation(data.nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(120))
+        .force('charge', d3.forceManyBody().strength(-200))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(30));
+
+    // Links
+    const link = g.append('g').selectAll('line')
+        .data(links).join('line')
+        .attr('class', 'graph-link')
+        .attr('stroke-width', 1.5);
+
+    // Link labels
+    const linkLabel = g.append('g').selectAll('text')
+        .data(links).join('text')
+        .attr('class', 'graph-link-label')
+        .text(d => d.relationship);
+
+    // Nodes
+    const node = g.append('g').selectAll('g')
+        .data(data.nodes).join('g')
+        .attr('class', 'graph-node')
+        .call(d3.drag()
+            .on('start', (event, d) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+            .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y; })
+            .on('end', (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+        )
+        .on('click', (event, d) => openNodeModal(d.id));
+
+    node.append('circle')
+        .attr('r', d => 6 + (d.importance || 0.5) * 10)
+        .attr('fill', d => getColor(d.type))
+        .attr('fill-opacity', 0.8)
+        .attr('stroke', d => getColor(d.type))
+        .attr('stroke-opacity', 0.3)
+        .attr('stroke-width', 4);
+
+    node.append('text')
+        .attr('dx', 14).attr('dy', 4)
+        .text(d => d.summary.length > 30 ? d.summary.slice(0, 30) + '...' : d.summary);
+
+    // Tick
+    simulation.on('tick', () => {
+        link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        linkLabel.attr('x', d => (d.source.x + d.target.x) / 2)
+            .attr('y', d => (d.source.y + d.target.y) / 2);
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+}
+
+function resetGraphZoom() {
+    if (window._graphSvg && window._graphZoom) {
+        window._graphSvg.transition().duration(500).call(window._graphZoom.transform, d3.zoomIdentity);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Types Page
+// ---------------------------------------------------------------------------
+
+async function renderTypes(el) {
+    try {
+        state.types = await api('/api/types');
+        state.proposals = await api('/api/proposals');
+    } catch { return; }
+
+    let proposalHTML = '';
+    if (state.proposals.length > 0) {
+        proposalHTML = '<h3 style="margin-bottom:12px; color:var(--amber);">⏳ Pending Proposals</h3>' +
+            state.proposals.map(p => `
+                <div class="proposal-banner">
+                    <div class="proposal-info">
+                        <div class="proposal-type">${p.icon || '📝'} ${p.display_name} <span style="color:var(--text-muted); font-weight:normal; font-size:12px;">(${p.type_name})</span></div>
+                        <div class="proposal-desc">${p.description}</div>
+                        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
+                            Fields: ${(p.fields || []).map(f => f.name).join(', ') || 'default'}
+                        </div>
+                    </div>
+                    <div class="proposal-actions">
+                        <button class="btn btn-primary btn-sm" onclick="approveProposal('${p.id}')">✓ Approve</button>
+                        <button class="btn btn-danger btn-sm" onclick="rejectProposal('${p.id}')">✗ Reject</button>
+                    </div>
+                </div>
+            `).join('');
+    }
+
+    const baseTypes = state.types.filter(t => t.is_base_type);
+    const customTypes = state.types.filter(t => !t.is_base_type);
+
+    el.innerHTML = `
+        <div class="page-header">
+            <h2>Type Manager</h2>
+        </div>
+
+        ${proposalHTML}
+
+        <h3 style="margin-bottom:12px; font-size:16px; color:var(--text-secondary);">Base Types (shipped)</h3>
+        <div class="card-grid">
+            ${baseTypes.map(t => `
+                <div class="type-card">
+                    <div class="type-icon">${t.icon}</div>
+                    <div class="type-info">
+                        <div class="type-name">${t.display_name}</div>
+                        <div class="type-desc">${t.description}</div>
+                    </div>
+                    <div class="type-badge">base</div>
+                </div>
+            `).join('')}
+        </div>
+
+        ${customTypes.length > 0 ? `
+            <h3 style="margin:20px 0 12px; font-size:16px; color:var(--text-secondary);">Custom Types</h3>
+            <div class="card-grid">
+                ${customTypes.map(t => `
+                    <div class="type-card">
+                        <div class="type-icon">${t.icon}</div>
+                        <div class="type-info">
+                            <div class="type-name">${t.display_name}</div>
+                            <div class="type-desc">${t.description}</div>
+                        </div>
+                        <div class="type-badge" style="background:var(--purple); background:rgba(180,124,255,0.15); color:var(--purple);">custom</div>
+                    </div>
+                `).join('')}
+            </div>
+        ` : ''}
+
+        <div style="margin-top:24px; padding:16px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:var(--radius-lg);">
+            <h4 style="margin-bottom:8px;">How to add custom types</h4>
+            <p style="font-size:13px; color:var(--text-secondary);">
+                Ask Claude to propose a new type for you. For example: <em>"I keep tracking recipes, can we make that a proper type?"</em>
+                Claude will call <code>propose_node_type</code> and the proposal will appear here for your approval.
+            </p>
+        </div>
+    `;
+}
+
+async function approveProposal(id) {
+    try {
+        await api(`/api/proposals/${id}/approve`, { method: 'POST' });
+        toast('Type approved and added to your graph!');
+        renderPage();
+    } catch {}
+}
+
+async function rejectProposal(id) {
+    try {
+        await api(`/api/proposals/${id}/reject`, { method: 'POST' });
+        toast('Proposal rejected');
+        renderPage();
+    } catch {}
+}
+
+// ---------------------------------------------------------------------------
+// Settings Page
+// ---------------------------------------------------------------------------
+
+async function renderSettings(el) {
+    try {
+        state.stats = await api('/api/stats');
+        state.snapshots = await api('/api/snapshots');
+    } catch { return; }
+
+    el.innerHTML = `
+        <div class="page-header">
+            <h2>Settings</h2>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:12px;">Database</h3>
+            <p style="font-size:13px; color:var(--text-secondary); margin-bottom:4px;">
+                <strong>Path:</strong> <code style="color:var(--teal);">${state.stats.db_path || 'unknown'}</code>
+            </p>
+            <p style="font-size:13px; color:var(--text-secondary);">
+                <strong>Size:</strong> ${state.stats.db_size} &nbsp;|&nbsp;
+                <strong>Nodes:</strong> ${state.stats.total_nodes} &nbsp;|&nbsp;
+                <strong>Embedded:</strong> ${state.stats.embedding_coverage}
+            </p>
+        </div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h3>Snapshots</h3>
+                <button class="btn btn-primary btn-sm" onclick="createSnapshotUI()">Create Snapshot</button>
+            </div>
+            <div id="snapshots-list">
+                ${state.snapshots.length > 0 ? state.snapshots.map(s => `
+                    <div class="snapshot-row">
+                        <span class="snapshot-name">${s.filename}</span>
+                        <span class="snapshot-meta">${formatBytes(s.size_bytes)} • ${new Date(s.created).toLocaleString()}</span>
+                    </div>
+                `).join('') : '<p style="color:var(--text-muted); font-size:13px;">No snapshots yet. Create one before making big changes.</p>'}
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:12px;">Export</h3>
+            <p style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
+                Download your entire knowledge graph as JSON. Your data, your file, your control.
+            </p>
+            <button class="btn" onclick="exportGraph()">📦 Export JSON</button>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom:12px;">Security</h3>
+            <p style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;" id="auth-status-text">Checking...</p>
+            <div id="auth-actions" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+            <div id="change-pw-form" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
+                <input type="password" id="settings-current-pw" placeholder="Current passphrase" style="width:100%; padding:10px 14px; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-primary); font-size:14px; outline:none; margin-bottom:8px;">
+                <input type="password" id="settings-new-pw" placeholder="New passphrase (4+ characters)" style="width:100%; padding:10px 14px; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-primary); font-size:14px; outline:none; margin-bottom:8px;">
+                <input type="password" id="settings-confirm-pw" placeholder="Confirm new passphrase" onkeydown="if(event.key==='Enter')doChangePassword()" style="width:100%; padding:10px 14px; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-primary); font-size:14px; outline:none; margin-bottom:8px;">
+                <div id="change-pw-error" style="color:var(--red); font-size:13px; margin-bottom:8px; display:none;"></div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-primary btn-sm" onclick="doChangePassword()">Save</button>
+                    <button class="btn btn-sm" onclick="document.getElementById('change-pw-form').style.display='none'">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="border-color: var(--teal-dim);">
+            <h3 style="margin-bottom:8px; color:var(--teal);">Full KARP Research Engine</h3>
+            <p style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
+                Graph Lite uses local BGE-small embeddings (384 dimensions) with SQLite.
+                The full KARP platform runs enterprise-grade vector storage, multi-AI deliberation
+                across four frontier models, and a knowledge graph architecture built for
+                institutional-scale research.
+            </p>
+            <a href="https://souldriver.com.au" target="_blank" class="btn btn-primary">Learn More →</a>
+        </div>
+    `;
+
+    // Check auth status
+    updateAuthStatus();
+}
+
+async function updateAuthStatus() {
+    const el = document.getElementById('auth-status-text');
+    const actionsEl = document.getElementById('auth-actions');
+    if (!el) return;
+    try {
+        const res = await fetch('/api/auth/status');
+        const data = await res.json();
+        if (data.auth_enabled) {
+            el.textContent = 'Password protection is enabled. Your web UI is secured.';
+            el.style.color = 'var(--teal)';
+            if (actionsEl) actionsEl.innerHTML = `
+                <button class="btn btn-sm" onclick="doLogout()">🔒 Lock / Logout</button>
+                <button class="btn btn-sm" onclick="showChangePassword()">Change Passphrase</button>
+            `;
+        } else {
+            el.textContent = 'Trust mode is active — web UI is open on localhost without a password.';
+            el.style.color = 'var(--amber)';
+            if (actionsEl) actionsEl.innerHTML = `
+                <button class="btn btn-sm" onclick="showChangePassword()">Set a Passphrase</button>
+            `;
+        }
+    } catch {
+        el.textContent = 'Could not check auth status.';
+    }
+}
+
+function showChangePassword() {
+    const form = document.getElementById('change-pw-form');
+    form.style.display = 'block';
+    document.getElementById('settings-current-pw').value = '';
+    document.getElementById('settings-new-pw').value = '';
+    document.getElementById('settings-confirm-pw').value = '';
+    document.getElementById('change-pw-error').style.display = 'none';
+    document.getElementById('settings-new-pw').focus();
+}
+
+async function doChangePassword() {
+    const current = document.getElementById('settings-current-pw').value;
+    const newPw = document.getElementById('settings-new-pw').value;
+    const confirm = document.getElementById('settings-confirm-pw').value;
+    const errorEl = document.getElementById('change-pw-error');
+
+    if (!newPw || newPw.length < 4) {
+        errorEl.textContent = 'New passphrase must be at least 4 characters.';
+        errorEl.style.display = 'block';
+        return;
+    }
+    if (newPw !== confirm) {
+        errorEl.textContent = 'Passphrases do not match.';
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/auth/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ current_password: current, new_password: newPw })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById('change-pw-form').style.display = 'none';
+            toast('Passphrase updated');
+            updateAuthStatus();
+        } else {
+            errorEl.textContent = data.error || 'Failed to change passphrase';
+            errorEl.style.display = 'block';
+        }
+    } catch {
+        errorEl.textContent = 'Connection error';
+        errorEl.style.display = 'block';
+    }
+}
+
+async function doLogout() {
+    try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.reload();
+    } catch {}
+}
+
+async function createSnapshotUI() {
+    try {
+        await api('/api/snapshots', { method: 'POST', body: { reason: 'manual_ui' } });
+        toast('Snapshot created');
+        renderPage();
+    } catch {}
+}
+
+function exportGraph() {
+    window.open('/api/export', '_blank');
+}
+
+// ---------------------------------------------------------------------------
+// Node Card Component
+// ---------------------------------------------------------------------------
+
+function renderNodeCard(node) {
+    const tags = (node.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+    const date = new Date((node.updated_at || node.created_at) * 1000).toLocaleDateString();
+    const similarity = node.similarity ? ` • ${Math.round(node.similarity * 100)}% match` : '';
+
+    return `
+        <div class="node-card" onclick="openNodeModal('${node.id}')">
+            <div class="node-header">
+                <span class="node-type">${node.type}</span>
+                <span style="font-size:11px; color:var(--text-muted);">${date}${similarity}</span>
+            </div>
+            <div class="node-summary">${escapeHTML(node.summary)}</div>
+            ${node.detail ? `<div class="node-detail">${escapeHTML(node.detail)}</div>` : ''}
+            <div class="node-tags">${tags}</div>
+        </div>
+    `;
+}
+
+// ---------------------------------------------------------------------------
+// Node Detail Modal
+// ---------------------------------------------------------------------------
+
+async function openNodeModal(id) {
+    const modal = document.getElementById('node-modal');
+    const content = document.getElementById('node-modal-content');
+
+    content.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+    modal.classList.add('active');
+
+    try {
+        const node = await api(`/api/nodes/${id}`);
+
+        const connections = node.connections || { outgoing: [], incoming: [] };
+        const connectionsHTML = [...connections.outgoing, ...connections.incoming].length > 0
+            ? `<div style="margin-top:12px;">
+                <label>Connections</label>
+                ${connections.outgoing.map(c => `<div style="font-size:13px; color:var(--text-secondary); padding:4px 0;">→ <strong>${c.relationship}</strong> → ${escapeHTML(c.summary)} <span class="node-type">${c.type}</span></div>`).join('')}
+                ${connections.incoming.map(c => `<div style="font-size:13px; color:var(--text-secondary); padding:4px 0;">← <strong>${c.relationship}</strong> ← ${escapeHTML(c.summary)} <span class="node-type">${c.type || c.source_type}</span></div>`).join('')}
+               </div>`
+            : '';
+
+        const metaEntries = Object.entries(node.metadata || {}).filter(([k, v]) => v);
+        const metaHTML = metaEntries.length > 0
+            ? `<div style="margin-top:12px;"><label>Metadata</label>
+                ${metaEntries.map(([k, v]) => `<div style="font-size:13px; color:var(--text-secondary); padding:2px 0;"><strong>${k}:</strong> ${Array.isArray(v) ? v.join(', ') : escapeHTML(String(v))}</div>`).join('')}
+               </div>`
+            : '';
+
+        content.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+                <div>
+                    <span class="node-type" style="margin-bottom:6px;">${node.type}</span>
+                    <h3 style="margin-top:8px;">${escapeHTML(node.summary)}</h3>
+                </div>
+                <button class="btn btn-sm" onclick="closeModal()" style="flex-shrink:0;">✕</button>
+            </div>
+
+            ${node.context ? `<div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Context: ${escapeHTML(node.context)}</div>` : ''}
+
+            ${node.detail ? `<div style="font-size:14px; color:var(--text-secondary); white-space:pre-wrap; margin-bottom:12px; padding:12px; background:var(--bg-tertiary); border-radius:var(--radius); max-height:300px; overflow-y:auto;">${escapeHTML(node.detail)}</div>` : ''}
+
+            <div class="node-tags">${(node.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}</div>
+
+            ${connectionsHTML}
+            ${metaHTML}
+
+            <div style="margin-top:16px; font-size:11px; color:var(--text-muted);">
+                ID: <code>${node.id}</code><br>
+                Created: ${new Date(node.created_at * 1000).toLocaleString()}<br>
+                Updated: ${new Date(node.updated_at * 1000).toLocaleString()}<br>
+                Importance: ${node.importance}
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-danger btn-sm" onclick="deleteNodeUI('${node.id}')">🗑️ Delete</button>
+                <button class="btn btn-sm" onclick="closeModal()">Close</button>
+            </div>
+        `;
+    } catch {
+        content.innerHTML = '<p>Error loading node.</p>';
+    }
+}
+
+async function deleteNodeUI(id) {
+    if (!confirm('Delete this node permanently?')) return;
+    try {
+        await api(`/api/nodes/${id}`, { method: 'DELETE' });
+        toast('Node deleted');
+        closeModal();
+        renderPage();
+    } catch {}
+}
+
+function closeModal() {
+    document.getElementById('node-modal').classList.remove('active');
+}
+
+// Close modal on overlay click
+document.getElementById('node-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeModal();
+});
+
+// Close modal on Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+});
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function navigateTo(page) {
+    state.page = page;
+    document.querySelectorAll('.nav-item').forEach(n => {
+        n.classList.toggle('active', n.dataset.page === page);
+    });
+    renderPage();
+}
+
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function formatBytes(bytes) {
+    if (bytes > 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    if (bytes > 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${bytes} B`;
+}
+
+function toast(message, type = 'success') {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+async function checkAuth() {
+    try {
+        const res = await fetch('/api/auth/status');
+        const data = await res.json();
+
+        // First-run setup needed
+        if (data.needs_setup) {
+            document.getElementById('setup-overlay').classList.add('active');
+            document.getElementById('setup-password').focus();
+            return false;
+        }
+
+        // Auth enabled but not logged in
+        if (data.auth_enabled && !data.authenticated) {
+            document.getElementById('login-overlay').classList.add('active');
+            document.getElementById('login-password').focus();
+            return false;
+        }
+        return true;
+    } catch {
+        return true; // If auth check fails, proceed (server may not have auth)
+    }
+}
+
+async function doSetupPassword() {
+    const password = document.getElementById('setup-password').value;
+    const confirm = document.getElementById('setup-confirm').value;
+    const errorEl = document.getElementById('setup-error');
+
+    if (!password || password.length < 4) {
+        errorEl.textContent = 'Passphrase must be at least 4 characters.';
+        errorEl.style.display = 'block';
+        return;
+    }
+    if (password !== confirm) {
+        errorEl.textContent = 'Passphrases do not match.';
+        errorEl.style.display = 'block';
+        document.getElementById('setup-confirm').value = '';
+        document.getElementById('setup-confirm').focus();
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/auth/setup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById('setup-overlay').classList.remove('active');
+            errorEl.style.display = 'none';
+            toast('Passphrase set — your knowledge graph is protected');
+            renderPage();
+        } else {
+            errorEl.textContent = data.error || 'Setup failed';
+            errorEl.style.display = 'block';
+        }
+    } catch {
+        errorEl.textContent = 'Connection error';
+        errorEl.style.display = 'block';
+    }
+}
+
+async function doSetupTrust() {
+    try {
+        const res = await fetch('/api/auth/trust', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById('setup-overlay').classList.remove('active');
+            toast('Trust mode enabled — no password required');
+            renderPage();
+        }
+    } catch {
+        const errorEl = document.getElementById('setup-error');
+        errorEl.textContent = 'Connection error';
+        errorEl.style.display = 'block';
+    }
+}
+
+async function doLogin() {
+    const password = document.getElementById('login-password').value;
+    const remember = document.getElementById('login-remember').checked;
+    const errorEl = document.getElementById('login-error');
+
+    if (!password) return;
+
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password, remember })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById('login-overlay').classList.remove('active');
+            errorEl.style.display = 'none';
+            renderPage();
+        } else {
+            errorEl.style.display = 'block';
+            document.getElementById('login-password').value = '';
+            document.getElementById('login-password').focus();
+        }
+    } catch {
+        errorEl.textContent = 'Connection error';
+        errorEl.style.display = 'block';
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+
+(async () => {
+    const authed = await checkAuth();
+    if (authed) renderPage();
+})();
+
+</script>
+</body>
+</html>
